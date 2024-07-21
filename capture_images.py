@@ -4,10 +4,11 @@ import os
 import argparse
 from datetime import datetime
 
-def add_timestamp(frame, timestamp, sequence_number):
+def add_timestamp(frame, timestamp, sequence_number, location):
     font = cv2.FONT_HERSHEY_SIMPLEX
     cv2.putText(frame, f'Time: {timestamp}', (10, 30), font, 0.7, (0, 255, 0), 2, cv2.LINE_AA)
     cv2.putText(frame, f'Seq: {sequence_number}', (10, 60), font, 0.7, (0, 255, 0), 2, cv2.LINE_AA)
+    cv2.putText(frame, f'Location: {location}', (10, 90), font, 0.7, (0, 255, 0), 2, cv2.LINE_AA)
     return frame
 
 def detect_motion(prev_gray, curr_gray, threshold=60, min_contour_area=4000):
@@ -22,7 +23,7 @@ def detect_motion(prev_gray, curr_gray, threshold=60, min_contour_area=4000):
     motion_detected = any(cv2.contourArea(contour) > min_contour_area for contour in contours)
     return motion_detected
 
-def capture_images(device_index, interval=60, duration=600, save_dir='photos', threshold=60, min_contour_area=4000, detection_interval=1):
+def capture_images(device_index, interval=60, duration=600, save_dir='photos', threshold=60, min_contour_area=4000, detection_interval=1, location='unknown'):
     # 确保 photos 目录存在
     os.makedirs(save_dir, exist_ok=True)
 
@@ -61,15 +62,15 @@ def capture_images(device_index, interval=60, duration=600, save_dir='photos', t
             last_detection_time = current_time
 
             if motion_detected:
-                frame_with_timestamp = add_timestamp(frame.copy(), timestamp, image_count)
-                save_path = os.path.join(save_dir, f'{device_name}_motion_photo_{image_count}.jpg')
+                frame_with_timestamp = add_timestamp(frame.copy(), timestamp, image_count, location)
+                save_path = os.path.join(save_dir, f'{location}_{device_name}_motion_photo_{image_count}.jpg')
                 cv2.imwrite(save_path, frame_with_timestamp)
                 print(f"Motion detected. Photo saved as {save_path}")
                 image_count += 1
 
         if current_time - last_capture_time >= interval:
-            frame_with_timestamp = add_timestamp(frame.copy(), timestamp, image_count)
-            save_path = os.path.join(save_dir, f'{device_name}_interval_photo_{image_count}.jpg')
+            frame_with_timestamp = add_timestamp(frame.copy(), timestamp, image_count, location)
+            save_path = os.path.join(save_dir, f'{location}_{device_name}_interval_photo_{image_count}.jpg')
             cv2.imwrite(save_path, frame_with_timestamp)
             print(f"Interval capture. Photo saved as {save_path}")
             image_count += 1
@@ -100,6 +101,7 @@ if __name__ == "__main__":
     parser.add_argument('--threshold', type=int, default=60, help='Threshold for frame difference in motion detection.')
     parser.add_argument('--min_contour_area', type=int, default=4000, help='Minimum contour area for motion detection.')
     parser.add_argument('--detection_interval', type=int, default=1, help='Interval between motion detection checks in seconds.')
+    parser.add_argument('--location', type=str, default='unknown', help='Location where the images are captured (e.g., bedroom, living_room).')
     args = parser.parse_args()
 
-    capture_images(device_index=args.device, interval=args.interval, duration=args.duration, threshold=args.threshold, min_contour_area=args.min_contour_area, detection_interval=args.detection_interval)
+    capture_images(device_index=args.device, interval=args.interval, duration=args.duration, threshold=args.threshold, min_contour_area=args.min_contour_area, detection_interval=args.detection_interval, location=args.location)

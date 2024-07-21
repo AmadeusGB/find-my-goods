@@ -91,6 +91,12 @@ pip install opencv-python
   
   **缺点**：如果位置设置不准确，可能会导致位置信息误导分析。
 
+- `--image_format`：指定保存图片的格式（默认值为 'jpg'）。
+
+  **优点**：可以选择更高效的图片格式，如 WebP，以节省存储空间并提供更好的图像质量。
+  
+  **缺点**：某些旧设备或软件可能不支持现代图片格式，如 WebP。
+
 #### 示例
 
 以下是一些使用示例：
@@ -98,13 +104,13 @@ pip install opencv-python
 - 使用电脑摄像头，最小轮廓面积为 4000，帧差阈值为 60，检测间隔为 1 秒：
 
   ```bash
-  python3.9 capture_images.py --device 1 --interval 60 --duration 600 --threshold 60 --min_contour_area 4000 --detection_interval 1 --location bedroom
+  python3.9 capture_images.py --device 1 --interval 60 --duration 600 --threshold 60 --min_contour_area 4000 --detection_interval 1 --location bedroom --image_format jpg
   ```
 
 - 使用 iPhone 11 摄像头，最小轮廓面积为 5000，帧差阈值为 70，检测间隔为 2 秒：
 
   ```bash
-  python3.9 capture_images.py --device 0 --interval 60 --duration 600 --threshold 70 --min_contour_area 5000 --detection_interval 2 --location living_room
+  python3.9 capture_images.py --device 0 --interval 60 --duration 600 --threshold 70 --min_contour_area 5000 --detection_interval 2 --location living_room --image_format jpg
   ```
 
 #### 注意事项

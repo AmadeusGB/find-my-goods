@@ -23,7 +23,7 @@ def detect_motion(prev_gray, curr_gray, threshold=60, min_contour_area=4000):
     motion_detected = any(cv2.contourArea(contour) > min_contour_area for contour in contours)
     return motion_detected
 
-def capture_images(device_index, interval=60, duration=600, save_dir='photos', threshold=60, min_contour_area=4000, detection_interval=1, location='unknown'):
+def capture_images(device_index, interval=60, duration=600, save_dir='photos', threshold=60, min_contour_area=4000, detection_interval=1, location='unknown', image_format='webp'):
     # 确保 photos 目录存在
     os.makedirs(save_dir, exist_ok=True)
 
@@ -63,14 +63,14 @@ def capture_images(device_index, interval=60, duration=600, save_dir='photos', t
 
             if motion_detected:
                 frame_with_timestamp = add_timestamp(frame.copy(), timestamp, image_count, location)
-                save_path = os.path.join(save_dir, f'{location}_{device_name}_motion_photo_{image_count}.jpg')
+                save_path = os.path.join(save_dir, f'{location}_{device_name}_motion_photo_{image_count}.{image_format}')
                 cv2.imwrite(save_path, frame_with_timestamp)
                 print(f"Motion detected. Photo saved as {save_path}")
                 image_count += 1
 
         if current_time - last_capture_time >= interval:
             frame_with_timestamp = add_timestamp(frame.copy(), timestamp, image_count, location)
-            save_path = os.path.join(save_dir, f'{location}_{device_name}_interval_photo_{image_count}.jpg')
+            save_path = os.path.join(save_dir, f'{location}_{device_name}_interval_photo_{image_count}.{image_format}')
             cv2.imwrite(save_path, frame_with_timestamp)
             print(f"Interval capture. Photo saved as {save_path}")
             image_count += 1
@@ -102,6 +102,7 @@ if __name__ == "__main__":
     parser.add_argument('--min_contour_area', type=int, default=4000, help='Minimum contour area for motion detection.')
     parser.add_argument('--detection_interval', type=int, default=1, help='Interval between motion detection checks in seconds.')
     parser.add_argument('--location', type=str, default='unknown', help='Location where the images are captured (e.g., bedroom, living_room).')
+    parser.add_argument('--image_format', type=str, default='webp', help='Format to save images (e.g., jpg, webp).')
     args = parser.parse_args()
 
-    capture_images(device_index=args.device, interval=args.interval, duration=args.duration, threshold=args.threshold, min_contour_area=args.min_contour_area, detection_interval=args.detection_interval, location=args.location)
+    capture_images(device_index=args.device, interval=args.interval, duration=args.duration, threshold=args.threshold, min_contour_area=args.min_contour_area, detection_interval=args.detection_interval, location=args.location, image_format=args.image_format)

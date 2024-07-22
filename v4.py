@@ -7,6 +7,8 @@ api_key = os.getenv('OPENAI_API_KEY')
 if not api_key:
     raise ValueError("API key not found. Please set the OPENAI_API_KEY environment variable.")
 
+PHOTOS_API_URL = "http://localhost:5001/api/photos"
+
 # Function to encode the image
 def encode_image(image_path):
     with open(image_path, "rb") as image_file:
@@ -44,7 +46,7 @@ def gpt4_visual_test(image_paths):
                     ]
                 }
             ],
-            "max_tokens": 600
+            "max_tokens": 1200
         }
 
         response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
@@ -60,7 +62,9 @@ if __name__ == "__main__":
     image_paths = [
         "photos/living_room_iphone_motion_photo_2.jpg",
         "photos/living_room_iphone_motion_photo_3.jpg",
-        "photos/living_room_iphone_motion_photo_4.jpg"
+        "photos/living_room_iphone_motion_photo_4.jpg",
+        "photos/living_room_iphone_motion_photo_5.jpg",
+        "photos/living_room_iphone_motion_photo_6.jpg"
     ]
     result = gpt4_visual_test(image_paths)
     print("GPT-4 Visual Response:", result)

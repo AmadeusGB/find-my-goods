@@ -93,16 +93,64 @@ def capture_images(device_index, interval=60, duration=600, save_dir='photos', t
     cap.release()
     cv2.destroyAllWindows()
 
+def record_video(device_index, duration=600, save_dir='videos', location='unknown'):
+    os.makedirs(save_dir, exist_ok=True)
+    cap = cv2.VideoCapture(device_index, cv2.CAP_AVFOUNDATION)
+    if not cap.isOpened():
+        print(f"Error: Could not open camera with index {device_index}.")
+        return
+
+    device_name = 'computer' if device_index == 1 else 'iphone'
+    start_time = time.time()
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    save_path = os.path.join(save_dir, f'{location}_{device_name}_video_{timestamp}.mp4')
+
+    # 使用MP4编码器
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    out = cv2.VideoWriter(save_path, fourcc, 20.0, (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))))
+
+    if not out.isOpened():
+        print(f"Error: Could not open video writer with path {save_path}.")
+        cap.release()
+        return
+
+    try:
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                print(f"Error: Could not read frame from camera with index {device_index}.")
+                break
+
+            out.write(frame)
+            cv2.imshow(f'Camera {device_index}', frame)
+
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+            if time.time() - start_time >= duration:
+                break
+    except KeyboardInterrupt:
+        print("Recording interrupted.")
+    finally:
+        cap.release()
+        out.release()
+        cv2.destroyAllWindows()
+        print(f"Video saved as {save_path}")
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Capture images from camera.')
+    parser = argparse.ArgumentParser(description='Capture images or record video from camera.')
     parser.add_argument('--device', type=int, required=True, help='Device index for the camera (e.g., 0 for iPhone, 1 for computer).')
-    parser.add_argument('--interval', type=int, default=60, help='Interval between captures in seconds.')
-    parser.add_argument('--duration', type=int, default=600, help='Total duration of capturing in seconds.')
-    parser.add_argument('--threshold', type=int, default=60, help='Threshold for frame difference in motion detection.')
-    parser.add_argument('--min_contour_area', type=int, default=4000, help='Minimum contour area for motion detection.')
-    parser.add_argument('--detection_interval', type=int, default=1, help='Interval between motion detection checks in seconds.')
-    parser.add_argument('--location', type=str, default='unknown', help='Location where the images are captured (e.g., bedroom, living_room).')
+    parser.add_argument('--mode', type=str, required=True, choices=['photo', 'video'], help='Mode of operation: photo or video.')
+    parser.add_argument('--interval', type=int, default=60, help='Interval between captures in seconds (only for photo mode).')
+    parser.add_argument('--duration', type=int, default=600, help='Total duration of capturing/recording in seconds.')
+    parser.add_argument('--threshold', type=int, default=60, help='Threshold for frame difference in motion detection (only for photo mode).')
+    parser.add_argument('--min_contour_area', type=int, default=4000, help='Minimum contour area for motion detection (only for photo mode).')
+    parser.add_argument('--detection_interval', type=int, default=1, help='Interval between motion detection checks in seconds (only for photo mode).')
+    parser.add_argument('--location', type=str, default='unknown', help='Location where the images or video are captured (e.g., bedroom, living_room).')
     parser.add_argument('--image_format', type=str, default='webp', help='Format to save images (e.g., jpg, webp).')
     args = parser.parse_args()
 
-    capture_images(device_index=args.device, interval=args.interval, duration=args.duration, threshold=args.threshold, min_contour_area=args.min_contour_area, detection_interval=args.detection_interval, location=args.location, image_format=args.image_format)
+    if args.mode == 'photo':
+        capture_images(device_index=args.device, interval=args.interval, duration=args.duration, threshold=args.threshold, min_contour_area=args.min_contour_area, detection_interval=args.detection_interval, location=args.location, image_format=args.image_format)
+    elif args.mode == 'video':
+        record_video(device_index=args.device, duration=args.duration, location=args.location)

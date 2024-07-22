@@ -38,14 +38,20 @@ pip install opencv-python
    - 使用电脑摄像头：
 
      ```bash
-     python3.9 capture_images.py --device 1 --interval 60 --duration 600 --threshold 60 --min_contour_area 4000 --detection_interval 1 --location bedroom --image_format jpg
+     python3.9 capture_images.py --device 0 --interval 60 --duration 600 --threshold 60 --min_contour_area 4000 --detection_interval 1 --location bedroom --image_format jpg
      ```
 
    - 使用 iPhone 11 摄像头：
 
      ```bash
-     python3.9 capture_images.py --device 0 --interval 60 --duration 600 --threshold 70 --min_contour_area 5000 --detection_interval 2 --location living_room --image_format jpg
+     python3.9 capture_images.py --device 1 --interval 60 --duration 600 --threshold 70 --min_contour_area 5000 --detection_interval 2 --location living_room --image_format jpg
      ```
+
+    - 使用 iPhone 13 摄像头：
+
+    ```bash
+    python3.9 capture_images.py --device 2 --interval 60 --duration 600 --threshold 70 --min_contour_area 5000 --detection_interval 2 --location living_room --image_format jpg
+    ```
 
 #### 参数说明
 
@@ -104,13 +110,19 @@ pip install opencv-python
 - 使用电脑摄像头，最小轮廓面积为 4000，帧差阈值为 60，检测间隔为 1 秒：
 
   ```bash
-  python3.9 capture_images.py --device 1 --interval 60 --duration 600 --threshold 60 --min_contour_area 4000 --detection_interval 1 --location bedroom --image_format jpg
+  python3.9 capture_images.py --device 0 --interval 60 --duration 600 --threshold 60 --min_contour_area 4000 --detection_interval 1 --location bedroom --image_format jpg
   ```
 
 - 使用 iPhone 11 摄像头，最小轮廓面积为 5000，帧差阈值为 70，检测间隔为 2 秒：
 
   ```bash
-  python3.9 capture_images.py --device 0 --interval 60 --duration 600 --threshold 70 --min_contour_area 5000 --detection_interval 2 --location living_room --image_format jpg
+  python3.9 capture_images.py --device 1 --interval 60 --duration 600 --threshold 70 --min_contour_area 5000 --detection_interval 2 --location living_room --image_format jpg
+  ```
+
+- 使用 iPhone 13 摄像头，最小轮廓面积为 5000，帧差阈值为 70，检测间隔为 2 秒：
+
+  ```bash
+  python3.9 capture_images.py --device 2 --interval 60 --duration 600 --threshold 70 --min_contour_area 5000 --detection_interval 2 --location living_room --image_format jpg
   ```
 
 #### 注意事项

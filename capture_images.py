@@ -4,7 +4,6 @@ import os
 import argparse
 from datetime import datetime
 from skimage.metrics import structural_similarity as ssim
-import numpy as np
 
 def add_timestamp(frame, timestamp, sequence_number, location):
     font = cv2.FONT_HERSHEY_SIMPLEX
@@ -18,7 +17,7 @@ def add_timestamp(frame, timestamp, sequence_number, location):
     cv2.putText(frame, f'Location: {location}', (10, 90), font, font_scale, text_color, font_thickness, line_type)
     return frame
 
-def detect_motion(prev_gray, curr_gray, bg_subtractor, threshold=60, min_contour_area=4000):
+def detect_motion(curr_gray, bg_subtractor, threshold=60, min_contour_area=4000):
     fg_mask = bg_subtractor.apply(curr_gray)
     blurred_mask = cv2.GaussianBlur(fg_mask, (5, 5), 0)
     _, thresh = cv2.threshold(blurred_mask, threshold, 255, cv2.THRESH_BINARY)
@@ -26,7 +25,7 @@ def detect_motion(prev_gray, curr_gray, bg_subtractor, threshold=60, min_contour
     contours, _ = cv2.findContours(dilated_thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     motion_detected = any(cv2.contourArea(contour) > min_contour_area for contour in contours)
-    return motion_detected, fg_mask
+    return motion_detected
 
 def configure_camera(cap):
     cap.set(cv2.CAP_PROP_EXPOSURE, -6)
@@ -57,14 +56,6 @@ def capture_images(device_index, interval=60, duration=600, save_dir='photos', t
     bg_subtractor = cv2.createBackgroundSubtractorMOG2(history=500, varThreshold=100, detectShadows=True)
     prev_saved_image = None
 
-    ret, prev_frame = cap.read()
-    if not ret:
-        print("Error: Could not read initial frame from camera.")
-        return
-
-    prev_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
-    prev_gray = cv2.GaussianBlur(prev_gray, (21, 21), 0)
-
     try:
         motion_frames = 0
         required_motion_frames = 3
@@ -82,7 +73,7 @@ def capture_images(device_index, interval=60, duration=600, save_dir='photos', t
             gray_frame = cv2.GaussianBlur(gray_frame, (21, 21), 0)
 
             if current_time - last_detection_time >= detection_interval:
-                motion_detected, fg_mask = detect_motion(prev_gray, gray_frame, bg_subtractor, threshold=threshold, min_contour_area=min_contour_area)
+                motion_detected = detect_motion(gray_frame, bg_subtractor, threshold=threshold, min_contour_area=min_contour_area)
                 last_detection_time = current_time
 
                 if motion_detected:
@@ -110,8 +101,6 @@ def capture_images(device_index, interval=60, duration=600, save_dir='photos', t
                 last_capture_time = current_time
 
             cv2.imshow(f'Camera {device_index}', frame)
-
-            prev_gray = gray_frame
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break

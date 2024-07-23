@@ -11,7 +11,7 @@ def list_photos():
         # 按文件修改时间排序
         photos.sort(key=os.path.getmtime, reverse=True)
         # 只取最近的10张照片
-        recent_photos = photos[:10]
+        recent_photos = photos[:5]
         # 返回文件名列表，而不是完整路径
         recent_photos = [os.path.basename(photo) for photo in recent_photos]
         return jsonify({'photos': recent_photos})

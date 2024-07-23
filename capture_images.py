@@ -31,7 +31,7 @@ def configure_camera(cap):
     cap.set(cv2.CAP_PROP_EXPOSURE, -6)
     cap.set(cv2.CAP_PROP_GAIN, 0)
 
-def is_similar(image1, image2, similarity_threshold=0.95):
+def is_similar(image1, image2, similarity_threshold=0.85):
     gray1 = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
     gray2 = cv2.cvtColor(image2, cv2.COLOR_BGR2GRAY)
     score, _ = ssim(gray1, gray2, full=True)

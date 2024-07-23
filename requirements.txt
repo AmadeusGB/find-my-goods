@@ -1,0 +1,7 @@
+opencv-python-headless==4.5.5.64
+Flask==2.0.1
+boto3==1.17.112
+SQLAlchemy==1.4.18
+scikit-image==0.18.1
+requests==2.25.1
+python-dotenv==0.17.1

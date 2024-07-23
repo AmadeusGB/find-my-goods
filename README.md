@@ -92,6 +92,7 @@ Before running the code, please ensure the following dependencies are installed:
 - SQLAlchemy
 - skimage
 - requests
+- python-dotenv
 
 You can install all dependencies using the following command:
 

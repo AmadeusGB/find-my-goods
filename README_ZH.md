@@ -91,6 +91,7 @@
 - SQLAlchemy
 - skimage
 - requests
+- python-dotenv
 
 您可以使用以下命令安装所有依赖：
 

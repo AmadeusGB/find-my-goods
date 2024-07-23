@@ -1,50 +1,53 @@
 # find-my-goods
 
-## 项目简介
+[English](README.md) | [中文](README_ZH.md)
 
-本项目旨在构建一个基于 Python 和 OpenCV 的分布式摄像头监控和分析系统，通过云端存储和 GPT-4o API，实现对用户提出的问题进行图像分析和回答。该系统包含四个主要模块：摄像头客户端（camera_client）、GPT 对话客户端（gpt_client）、图片存储和管理服务器（photos_api_server）以及 GPT 处理服务器（gpt_processing_server）。
+## Project Overview
 
-### 功能概述
-1. **实时监控和录制**：
-   - 利用多个摄像头在家庭内对各个房间进行实时、不间断的监控和录制。系统能够捕捉和存储高清图像和视频，确保用户可以随时查看家庭环境的情况。
-   - 应用场景：家庭安全监控、老人和儿童的实时看护。
+The aim of the `find-my-goods` project is to build a distributed camera monitoring and analysis system based on Python and OpenCV. By leveraging cloud storage and the GPT-4o API, it can analyze images to answer user queries. The system comprises four main modules: the Camera Client (`camera_client`), the GPT Dialogue Client (`gpt_client`), the Photo Storage and Management Server (`photos_api_server`), and the GPT Processing Server (`gpt_processing_server`).
 
-2. **智能查询和回答**：
-   - 用户可以通过语音或文字询问系统关于家中物品的位置或其他事件。系统通过分析历史视频和关键图片，提供准确的回答。
-   - 示例问题：“我的水杯在哪里？”、“昨天谁动了我的披萨？”等。系统能够通过图像识别和事件检测，准确定位物品或事件。
-   - 应用场景：物品追踪、事件回溯。
+### Features Overview
 
-3. **事件推送和报告**：
-   - 系统能够识别并报告家中发生的各种事件，如物品移动、陌生人进入、动物侵扰等。
-   - 示例场景：系统可以告诉用户“昨天你的鞋子被拿到卫生间去洗了”或“有一只野猫闯进家里叼走了披萨”等。
-   - 应用场景：家庭安全、宠物监控。
+1. **Real-Time Monitoring and Recording**:
+   - Utilize multiple cameras to continuously monitor and record different rooms in the house in real-time. The system can capture and store high-definition images and videos, ensuring users can check the home environment anytime.
+   - Use Cases: Home security monitoring, real-time care for the elderly and children.
 
-4. **冰箱库存管理**：
-   - 在冰箱内安装摄像头，系统会定期报告冰箱内食物的使用情况，提醒用户需要补充哪些食物。
-   - 示例功能：系统能够告诉用户“冰箱内的牛奶快喝完了，建议购买新的牛奶”。
-   - 应用场景：智能家居管理、食品库存管理。
+2. **Intelligent Query and Response**:
+   - Users can ask the system about the location of items or other events in the home via voice or text. The system analyzes historical videos and key images to provide accurate answers.
+   - Example Questions: “Where is my water bottle?”, “Who moved my pizza yesterday?”. The system can accurately locate items or events through image recognition and event detection.
+   - Use Cases: Item tracking, event review.
 
-5. **婴儿行为监护**：
-   - 在婴儿房间安装摄像头，当婴儿出现危险行为时，系统会实时分析并推送警报给用户。
-   - 示例功能：系统能够在检测到婴儿从床上跌落时，立即向父母手机发送警报。
-   - 应用场景：婴儿安全监控、儿童看护。
+3. **Event Push and Reporting**:
+   - The system can identify and report various events happening in the home, such as item movements, stranger intrusions, animal disturbances, etc.
+   - Example Scenarios: The system can inform the user, “Your shoes were taken to the bathroom for washing yesterday” or “A wild cat entered the house and took the pizza”.
+   - Use Cases: Home security, pet monitoring.
 
-6. **院子监控**：
-   - 在院子周围安装摄像头，系统可以总结报告一周内院子周围发生的事件，如陌生人经过、动物侵扰等。
-   - 示例功能：系统可以告诉用户“这一周有几只小猫在你的后院玩耍”或“有熊翻了垃圾桶”。
-   - 应用场景：家庭周边安全监控、动物活动监控。
+4. **Fridge Inventory Management**:
+   - Install a camera inside the fridge, and the system will periodically report the usage of food items, reminding users to replenish necessary items.
+   - Example Functionality: The system can notify the user, “The milk in the fridge is running low, consider buying new milk”.
+   - Use Cases: Smart home management, food inventory management.
 
-7. **数据隐私和安全**：
-   - 该系统在处理数据时，优先考虑用户的隐私和数据安全。所有图像数据都存储在云端，只有经过授权的用户才能访问。
-   - 系统支持未来基于本地模型的处理，当算力足够时，实现完全离线的数据分析，进一步保障隐私。
+5. **Baby Behavior Monitoring**:
+   - Install a camera in the baby’s room, and the system will analyze and push alerts to the user if the baby exhibits dangerous behavior.
+   - Example Functionality: The system can immediately send an alert to parents' phones if the baby falls from the bed.
+   - Use Cases: Baby safety monitoring, child care.
 
-8. **用户友好性**：
-   - 系统提供简洁易用的界面，用户可以通过语音或文字与系统互动，获取所需信息。
-   - 支持多设备接入，用户可以通过手机、平板或电脑随时查看和管理家中的监控数据。
+6. **Yard Monitoring**:
+   - Install cameras around the yard, and the system can summarize and report events happening around the yard during the week, such as strangers passing by or animal disturbances.
+   - Example Functionality: The system can inform the user, “Several kittens played in your backyard this week” or “A bear turned over the trash bin”.
+   - Use Cases: Home perimeter security monitoring, animal activity monitoring.
 
-本项目不仅为家庭提供了高效的监控和管理工具，还通过智能分析和推送机制，提升了家居生活的安全性和便利性。
+7. **Data Privacy and Security**:
+   - The system prioritizes user privacy and data security when processing data. All image data is stored in the cloud, accessible only to authorized users.
+   - The system supports future local model processing, ensuring complete offline data analysis when computing power is sufficient, further enhancing privacy.
 
-## 目录结构
+8. **User Friendliness**:
+   - The system offers a simple and easy-to-use interface, allowing users to interact with the system via voice or text to obtain the needed information.
+   - Supports multi-device access, enabling users to view and manage home monitoring data anytime via phone, tablet, or computer.
+
+This project not only provides efficient monitoring and management tools for the home but also enhances the safety and convenience of home life through intelligent analysis and push mechanisms.
+
+## Directory Structure
 
 ```
 .
@@ -78,9 +81,9 @@
 └── requirements.txt
 ```
 
-## 安装依赖
+## Installation Dependencies
 
-在运行该代码之前，请确保已安装以下依赖：
+Before running the code, please ensure the following dependencies are installed:
 
 - Python 3.9
 - OpenCV
@@ -90,235 +93,235 @@
 - skimage
 - requests
 
-您可以使用以下命令安装所有依赖：
+You can install all dependencies using the following command:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## 模块说明
+## Module Descriptions
 
-### 摄像头客户端（camera_client）
+### Camera Client (camera_client)
 
-负责处理摄像头相关操作，包括捕获图片或视频，将其上传到服务器。
+Handles camera-related operations, including capturing images or videos and uploading them to the server.
 
-- **主要功能**：
-  - 捕获图片或视频
-  - 对图片进行预处理（如加时间戳、运动检测等）
-  - 将处理后的图片上传到云端存储
+- **Main Functions**:
+  - Capture images or videos
+  - Preprocess images (e.g., add timestamps, motion detection)
+  - Upload processed images to cloud storage
 
-- **文件说明**：
-  - `main.py`：主程序入口，处理命令行参数并调用相应功能。
-  - `camera_utils.py`：摄像头相关操作，如启动摄像头、配置摄像头参数。
-  - `image_processing.py`：图像处理功能，如运动检测、图像相似性检测。
-  - `upload.py`：将处理后的图片上传到云端存储。
-  - `config.py`：配置文件。
-  - `logger.py`：日志记录模块。
+- **File Descriptions**:
+  - `main.py`: Main entry point, handles command-line arguments and invokes corresponding functions.
+  - `camera_utils.py`: Handles camera-related operations such as initializing and configuring the camera.
+  - `image_processing.py`: Contains image processing functions such as motion detection and image similarity detection.
+  - `upload.py`: Uploads processed images to cloud storage.
+  - `config.py`: Configuration file.
+  - `logger.py`: Logging module.
 
-- **使用示例**：
-  - 使用电脑摄像头拍照：
+- **Usage Examples**:
+  - Capture photos using a computer camera:
     ```bash
     python3.9 camera_client/main.py --device 0 --mode photo --interval 60 --duration 600 --location bedroom
     ```
 
-  - 使用 iPhone 11 摄像头录制视频：
+  - Record videos using an iPhone 11 camera:
     ```bash
     python3.9 camera_client/main.py --device 1 --mode video --duration 600 --location living_room
     ```
 
-### GPT 对话客户端（gpt_client）
+### GPT Dialogue Client (gpt_client)
 
-负责接受用户输入（文字或语音），将请求发送到服务器并接收处理结果。
+Handles user input (text or voice), sends requests to the server, and receives processing results.
 
-- **主要功能**：
-  - 接受用户输入（文字或语音）
-  - 将输入请求发送到 GPT 处理服务器
-  - 接收并显示处理结果
+- **Main Functions**:
+  - Accept user input (text or voice)
+  - Send input requests to the GPT processing server
+  - Receive and display processing results
 
-- **文件说明**：
-  - `main.py`：主程序入口，处理命令行参数并调用相应功能。
-  - `audio_processing.py`：语音处理功能，如语音识别、语音转文字。
-  - `request_handler.py`：处理用户请求，发送请求到服务器并接收响应。
-  - `config.py`：配置文件。
-  - `logger.py`：日志记录模块。
+- **File Descriptions**:
+  - `main.py`: Main entry point, handles command-line arguments and invokes corresponding functions.
+  - `audio_processing.py`: Handles voice processing functions such as speech recognition and speech-to-text conversion.
+  - `request_handler.py`: Handles user requests, sends requests to the server, and receives responses.
+  - `config.py`: Configuration file.
+  - `logger.py`: Logging module.
 
-- **使用示例**：
-  - 通过文字询问问题并获取图片分析结果：
+- **Usage Examples**:
+  - Ask a question via text and get image analysis results:
     ```bash
-    python3.9 gpt_client/main.py --question "红色的袋子在哪里？" --count 5
+    python3.9 gpt_client/main.py --question "Where is the red bag?" --count 5
     ```
 
-### 图片存储和管理服务器（photos_api_server）
+### Photo Storage and Management Server (photos_api_server)
 
-负责接收来自客户端的图片，将其存储在云端，并对外提供 API 接口来查询和获取图片。
+Handles receiving images from clients, storing them in the cloud, and providing API interfaces to query and retrieve images.
 
-- **主要功能**：
-  - 接收并存储图片
-  - 提供 API 接口查询和获取图片
-  - 管理图片元数据
+- **Main Functions**:
+  - Receive and store images
+  - Provide API interfaces to query and retrieve images
+  - Manage image metadata
 
-- **文件说明**：
-  - `app.py`：主程序入口，启动 Flask 服务器。
-  - `storage.py`：图片存储功能，实现图片上传、下载、删除等操作。
-  - `models.py`：图片元数据模型，使用 SQLAlchemy 管理。
-  - `config.py`：配置文件。
-  - `logger.py`：日志记录模块。
-  - `monitor.py`：监控模块，监控服务器运行状态。
+- **File Descriptions**:
+  - `app.py`: Main entry point, starts the Flask server.
+  - `storage.py`: Handles image storage functions such as uploading, downloading, and deleting images.
+  - `models.py`: Manages image metadata using SQLAlchemy.
+  - `config.py`: Configuration file.
+  - `logger.py`: Logging module.
+  - `monitor.py`: Monitoring module, monitors the server's running status.
 
-- **运行示例**：
-  - 启动图片存储和管理服务器：
+- **Running Example**:
+  - Start the photo storage and management server:
     ```bash
     python3.9 photos_api_server/app.py
     ```
 
-### GPT 处理服务器（gpt_processing_server）
+### GPT Processing Server (gpt_processing_server)
 
-负责接受来自客户端的请求，获取所需图片，调用 GPT-4 API 进行处理，并返回结果。
+Handles receiving requests from clients, retrieving required images, calling the GPT-4 API for processing, and returning results.
 
-- **主要功能**：
-  - 接受来自客户端的请求
-  - 从图片存储服务器获取图片
-  - 调用 GPT-4 API 进行处理
-  - 返回处理结果
+- **Main Functions**:
+  - Receive requests from clients
+  - Retrieve images from the photo storage server
+  - Call the GPT-4 API for image analysis
+  - Return processing results
 
-- **文件说明**：
-  - `app.py`：主程序入口，启动 Flask 服务器。
-  - `gpt_api.py`：GPT-4 API 调用模块，处理图像分析请求。
-  - `config.py`：配置文件。
-  - `logger.py`：日志记录模块。
-  - `monitor.py`：监控模块，监控服务器运行状态。
+- **File Descriptions**:
+  - `app.py`: Main entry point, starts the Flask server.
+  - `gpt_api.py`: GPT-4 API call module, handles image analysis requests.
+  - `config.py`: Configuration file.
+  - `logger.py`: Logging module.
+  - `monitor.py`: Monitoring module, monitors the server's running status.
 
-- **运行示例**：
-  - 启动 GPT 处理服务器：
+- **Running Example**:
+  - Start the GPT processing server:
     ```bash
     python3.9 gpt_processing_server/app.py
     ```
 
-## 参数说明
+## Command-Line Parameters
 
-以下是命令行参数的详细解析和介绍：
+Below is a detailed explanation of the command-line parameters:
 
-- `--device`：指定摄像头设备索引（0 表示电脑摄像头，1 表示 iPhone 11 摄像头，2 表示 iPhone 13 摄像头）。
+- `--device`: Specifies the camera device index (0 for computer camera, 1 for iPhone 11 camera, 2 for iPhone 13 camera).
   
-  **解析**：此参数用于选择哪个摄像头设备将用于拍照或录制视频。
+  **Explanation**: This parameter is used to select which camera device to use for capturing photos or videos.
   
-  **优点**：可以灵活选择不同的摄像头设备进行拍照或录视频。
+  **Advantages**: Allows flexible selection of different camera devices for capturing photos or videos.
   
-  **缺点**：必须知道设备索引，否则可能无法正确选择摄像头。
+  **Disadvantages**: Requires knowing the device index, otherwise the correct camera may not be selected.
 
-- `--mode`：指定操作模式，`photo` 表示拍照模式，`video` 表示录视频模式。
+- `--mode`: Specifies the operation mode, `photo` for photo mode, `video` for video recording mode.
   
-  **解析**：此参数用于指定工具的操作模式，是拍照还是录制视频。
+  **Explanation**: This parameter is used to specify the tool's operation mode, whether to capture photos or record videos.
   
-  **优点**：可以根据需要选择拍照或录视频。
-  
-  **缺点**：需要明确指定操作模式。
+  **Advantages**:
 
-- `--interval`：指定定时拍摄的间隔时间，单位为秒（仅适用于拍照模式，默认值为60秒）。
+ Allows choosing between photo capture and video recording based on needs.
   
-  **解析**：此参数用于设置每次拍照之间的时间间隔。
-  
-  **优点**：定时拍摄可以保证在固定时间间隔内拍摄照片，便于时间序列分析。
-  
-  **缺点**：如果设置过短，可能会生成大量照片，占用存储空间；如果设置过长，可能会漏掉重要的变化。
+  **Disadvantages**: Requires specifying the operation mode clearly.
 
-- `--duration`：指定总拍摄或录制时长，单位为秒（默认值为600秒）。
+- `--interval`: Specifies the interval between captures in seconds (only applicable for photo mode, default is 60 seconds).
   
-  **解析**：此参数用于设置拍照或录制视频的总时长。
+  **Explanation**: This parameter is used to set the time interval between each photo capture.
   
-  **优点**：可以控制总拍摄或录制时间，便于测试和管理。
+  **Advantages**: Timed captures ensure photos are taken at fixed intervals, facilitating time-series analysis.
   
-  **缺点**：如果设置过长，可能会生成大量数据，占用存储空间。
+  **Disadvantages**: If set too short, it may generate a large number of photos, occupying storage space; if set too long, important changes may be missed.
 
-- `--threshold`：指定帧差阈值，用于运动检测（仅适用于拍照模式，默认值为60）。
+- `--duration`: Specifies the total duration of capturing/recording in seconds (default is 600 seconds).
   
-  **解析**：此参数用于设置帧之间差异的阈值，用于检测运动。
+  **Explanation**: This parameter is used to set the total duration for capturing photos or recording videos.
   
-  **优点**：可以调整运动检测的灵敏度，帧差阈值越高，运动检测越不敏感。
+  **Advantages**: Controls the total capturing or recording time, making it convenient for testing and management.
   
-  **缺点**：如果设置过高，可能会漏掉细微的运动；如果设置过低，可能会对轻微的变化过于敏感。
+  **Disadvantages**: If set too long, it may generate a large amount of data, occupying storage space.
 
-- `--min_contour_area`：指定运动检测的最小轮廓面积（仅适用于拍照模式，默认值为4000）。
+- `--threshold`: Specifies the frame difference threshold for motion detection (only applicable for photo mode, default is 60).
   
-  **解析**：此参数用于设置检测运动时的最小轮廓面积。
+  **Explanation**: This parameter is used to set the frame difference threshold for detecting motion.
   
-  **优点**：可以调整运动检测的灵敏度，轮廓面积阈值越大，运动检测越不敏感。
+  **Advantages**: Allows adjusting the sensitivity of motion detection; the higher the threshold, the less sensitive the motion detection.
   
-  **缺点**：如果设置过高，可能会漏掉小面积的运动；如果设置过低，可能会对小面积的变化过于敏感。
+  **Disadvantages**: If set too high, subtle motions may be missed; if set too low, it may be too sensitive to slight changes.
 
-- `--detection_interval`：指定运动检测检查之间的间隔时间，单位为秒（仅适用于拍照模式，默认值为1秒）。
+- `--min_contour_area`: Specifies the minimum contour area for motion detection (only applicable for photo mode, default is 4000).
   
-  **解析**：此参数用于设置每次进行运动检测的时间间隔。
+  **Explanation**: This parameter is used to set the minimum contour area for detecting motion.
   
-  **优点**
+  **Advantages**: Allows adjusting the sensitivity of motion detection; the larger the contour area threshold, the less sensitive the motion detection.
+  
+  **Disadvantages**: If set too high, small area motions may be missed; if set too low, it may be too sensitive to small area changes.
 
-：可以减少运动检测的频率，从而减少计算量和资源占用。
+- `--detection_interval`: Specifies the interval between motion detection checks in seconds (only applicable for photo mode, default is 1 second).
   
-  **缺点**：如果设置过长，可能会漏掉快速发生的运动。
+  **Explanation**: This parameter is used to set the time interval for each motion detection check.
+  
+  **Advantages**: Reduces the frequency of motion detection, thus reducing computation and resource usage.
+  
+  **Disadvantages**: If set too long, quickly occurring motions may be missed.
 
-- `--location`：指定拍摄照片或录制视频的位置（默认值为 'unknown'）。
+- `--location`: Specifies the location where the photos or videos are captured (default is 'unknown').
   
-  **解析**：此参数用于在图片或视频上添加位置信息。
+  **Explanation**: This parameter is used to add location information to the images or videos.
   
-  **优点**：可以在图片和视频上添加位置信息，便于后续位置分类和分析。
+  **Advantages**: Allows adding location information to images and videos, making it convenient for subsequent location-based classification and analysis.
   
-  **缺点**：如果位置设置不准确，可能会导致位置信息误导分析。
+  **Disadvantages**: If the location is set inaccurately, it may mislead the analysis.
 
-- `--image_format`：指定保存图片的格式（仅适用于拍照模式，默认值为 'jpg'）。
+- `--image_format`: Specifies the format to save images (only applicable for photo mode, default is 'jpg').
   
-  **解析**：此参数用于设置保存图片的文件格式。
+  **Explanation**: This parameter is used to set the file format for saving images.
   
-  **优点**：可以选择更高效的图片格式，如 WebP，以节省存储空间并提供更好的图像质量。
+  **Advantages**: Allows choosing more efficient image formats like WebP to save storage space and provide better image quality.
   
-  **缺点**：某些旧设备或软件可能不支持现代图片格式，如 WebP。
+  **Disadvantages**: Some older devices or software may not support modern image formats like WebP.
 
-## 示例
+## Examples
 
-以下是一些使用示例：
+Here are some usage examples:
 
-- 使用电脑摄像头拍照，最小轮廓面积为 4000，帧差阈值为 60，检测间隔为 1 秒：
+- Capture photos using a computer camera with a minimum contour area of 4000, frame difference threshold of 60, and detection interval of 1 second:
 
   ```bash
   python3.9 camera_client/main.py --device 0 --mode photo --interval 60 --duration 600 --threshold 60 --min_contour_area 4000 --detection_interval 1 --location bedroom --image_format jpg
   ```
 
-- 使用 iPhone 11 摄像头拍照，最小轮廓面积为 5000，帧差阈值为 70，检测间隔为 2 秒：
+- Capture photos using an iPhone 11 camera with a minimum contour area of 5000, frame difference threshold of 70, and detection interval of 2 seconds:
 
   ```bash
   python3.9 camera_client/main.py --device 1 --mode photo --interval 60 --duration 600 --threshold 70 --min_contour_area 5000 --detection_interval 2 --location living_room --image_format jpg
   ```
 
-- 使用 iPhone 13 摄像头拍照，最小轮廓面积为 5000，帧差阈值为 70，检测间隔为 2 秒：
+- Capture photos using an iPhone 13 camera with a minimum contour area of 5000, frame difference threshold of 70, and detection interval of 2 seconds:
 
   ```bash
   python3.9 camera_client/main.py --device 2 --mode photo --interval 60 --duration 600 --threshold 70 --min_contour_area 5000 --detection_interval 2 --location living_room --image_format jpg
   ```
 
-- 使用电脑摄像头录制视频，时长 600 秒，位置为 bedroom：
+- Record videos using a computer camera for 600 seconds, location set to bedroom:
 
   ```bash
   python3.9 camera_client/main.py --device 0 --mode video --duration 600 --location bedroom
   ```
 
-- 使用 iPhone 11 摄像头录制视频，时长 600 秒，位置为 living_room：
+- Record videos using an iPhone 11 camera for 600 seconds, location set to living_room:
 
   ```bash
   python3.9 camera_client/main.py --device 1 --mode video --duration 600 --location living_room
   ```
 
-- 使用 iPhone 13 摄像头录制视频，时长 600 秒，位置为 living_room：
+- Record videos using an iPhone 13 camera for 600 seconds, location set to living_room:
 
   ```bash
   python3.9 camera_client/main.py --device 2 --mode video --duration 600 --location living_room
   ```
 
-## 架构说明
+## Architecture Description
 
-### 摄像头客户端（camera_client）
+### Camera Client (camera_client)
 
-负责处理摄像头相关操作，包括捕获图片或视频，将其上传到服务器。
+Handles camera-related operations, including capturing images or videos and uploading them to the server.
 
-- **架构图**：
+- **Architecture Diagram**:
 
   ```
   +-----------------+
@@ -341,17 +344,17 @@ pip install -r requirements.txt
   +-----------------+
   ```
 
-- **交互流程**：
-  1. `main.py` 处理命令行参数，调用 `camera_utils.py` 启动摄像头。
-  2. `camera_utils.py` 负责摄像头的初始化和配置，捕获图像并传递给 `image_processing.py`。
-  3. `image_processing.py` 对图像进行预处理，如运动检测和图像相似性检测。
-  4. 预处理后的图像通过 `upload.py` 上传到云端存储。
+- **Interaction Process**:
+  1. `main.py` processes command-line arguments and calls `camera_utils.py` to start the camera.
+  2. `camera_utils.py` is responsible for initializing and configuring the camera, capturing images, and passing them to `image_processing.py`.
+  3. `image_processing.py` performs image preprocessing, such as motion detection and image similarity detection.
+  4. Processed images are uploaded to cloud storage through `upload.py`.
 
-### GPT 对话客户端（gpt_client）
+### GPT Dialogue Client (gpt_client)
 
-负责接受用户输入（文字或语音），将请求发送到服务器并接收处理结果。
+Handles user input (text or voice), sends requests to the server, and receives processing results.
 
-- **架构图**：
+- **Architecture Diagram**:
 
   ```
   +-----------------+
@@ -369,16 +372,16 @@ pip install -r requirements.txt
   +-----------------+
   ```
 
-- **交互流程**：
-  1. `main.py` 处理命令行参数和用户输入，调用 `audio_processing.py` 进行语音识别（如有需要）。
-  2. `audio_processing.py` 将语音转化为文字，并传递给 `request_handler.py`。
-  3. `request_handler.py` 将用户问题和图片请求发送到 GPT 处理服务器，并接收处理结果。
+- **Interaction Process**:
+  1. `main.py` processes command-line arguments and user input, calling `audio_processing.py` for speech recognition if needed.
+  2. `audio_processing.py` converts speech to text and passes it to `request_handler.py`.
+  3. `request_handler.py` sends user questions and image requests to the GPT processing server and receives processing results.
 
-### 图片存储和管理服务器（photos_api_server）
+### Photo Storage and Management Server (photos_api_server)
 
-负责接收来自客户端的图片，将其存储在云端，并对外提供 API 接口来查询和获取图片。
+Handles receiving images from clients, storing them in the cloud, and providing API interfaces to query and retrieve images.
 
-- **架构图**：
+- **Architecture Diagram**:
 
   ```
   +-----------------+
@@ -396,16 +399,16 @@ pip install -r requirements.txt
   +-----------------+
   ```
 
-- **交互流程**：
-  1. `app.py` 负责启动 Flask 服务器，接收来自客户端的图片上传请求。
-  2. `storage.py` 处理图片的存储和管理。
-  3. `models.py` 使用 SQLAlchemy 管理图片的元数据，并提供查询接口。
+- **Interaction Process**:
+  1. `app.py` starts the Flask server and receives image upload requests from clients.
+  2. `storage.py` handles image storage and management.
+  3. `models.py` uses SQLAlchemy to manage image metadata and provides query interfaces.
 
-### GPT 处理服务器（gpt_processing_server）
+### GPT Processing Server (gpt_processing_server)
 
-负责接受来自客户端的请求，获取所需图片，调用 GPT-4 API 进行处理，并返回结果。
+Handles receiving requests from clients, retrieving required images, calling the GPT-4 API for processing, and returning results.
 
-- **架构图**：
+- **Architecture Diagram**:
 
   ```
   +-----------------+
@@ -418,16 +421,16 @@ pip install -r requirements.txt
   +-----------------+
   ```
 
-- **交互流程**：
-  1. `app.py` 负责启动 Flask 服务器，接收来自客户端的请求。
-  2. `gpt_api.py` 处理请求，调用 GPT-4 API 进行图像分析，并返回处理结果。
+- **Interaction Process**:
+  1. `app.py` starts the Flask server and receives requests from clients.
+  2. `gpt_api.py` handles the requests, calls the GPT-4 API for image analysis, and returns the results.
 
-## 注意事项
+## Considerations
 
-- 请确保运行摄像头客户端脚本时，Python 解释器有摄像头访问权限。可以在 macOS 的“系统偏好设置” -> “安全性与隐私” -> “隐私” -> “相机”中进行设置。
-- 运行代码前，请关闭其他可能占用摄像头的应用程序（如 Photo Booth）。
-- 根据需求调整各参数，以达到最佳效果。
+- Ensure that the Python interpreter has camera access permissions when running the camera client script. This can be set in macOS “System Preferences” -> “Security & Privacy” -> “Privacy” -> “Camera”.
+- Close other applications that might be using the camera (e.g., Photo Booth) before running the code.
+- Adjust parameters as needed to achieve the best results.
 
-## 问题反馈
+## Feedback
 
-如果在使用过程中遇到任何问题，请提供详细的错误信息，以便进一步分析和排查。
+If you encounter any issues while using the system, please provide detailed error information for further analysis and troubleshooting.

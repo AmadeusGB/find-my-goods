@@ -2,6 +2,10 @@ import os
 import base64
 import requests
 import argparse
+from dotenv import load_dotenv
+
+# 加载 .env 文件中的环境变量
+load_dotenv()
 
 # 从环境变量中读取 API 密钥
 api_key = os.getenv('OPENAI_API_KEY')

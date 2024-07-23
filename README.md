@@ -1,10 +1,10 @@
-### README
+# find-my-goods
 
-#### 项目简介
+## 项目简介
 
 本项目旨在构建一个基于 Python 和 OpenCV 的分布式摄像头监控和分析系统，通过云端存储和 GPT-4 API，实现对用户提出的问题进行图像分析和回答。该系统包含四个主要模块：摄像头客户端（camera_client）、GPT 对话客户端（gpt_client）、图片存储和管理服务器（photos_api_server）以及 GPT 处理服务器（gpt_processing_server）。
 
-#### 目录结构
+## 目录结构
 
 ```
 .
@@ -38,7 +38,7 @@
 └── requirements.txt
 ```
 
-#### 安装依赖
+## 安装依赖
 
 在运行该代码之前，请确保已安装以下依赖：
 
@@ -56,9 +56,9 @@
 pip install -r requirements.txt
 ```
 
-#### 模块说明
+## 模块说明
 
-##### 摄像头客户端（camera_client）
+### 摄像头客户端（camera_client）
 
 负责处理摄像头相关操作，包括捕获图片或视频，将其上传到服务器。
 
@@ -86,7 +86,7 @@ pip install -r requirements.txt
     python3.9 camera_client/main.py --device 1 --mode video --duration 600 --location living_room
     ```
 
-##### GPT 对话客户端（gpt_client）
+### GPT 对话客户端（gpt_client）
 
 负责接受用户输入（文字或语音），将请求发送到服务器并接收处理结果。
 
@@ -108,7 +108,7 @@ pip install -r requirements.txt
     python3.9 gpt_client/main.py --question "红色的袋子在哪里？" --count 5
     ```
 
-##### 图片存储和管理服务器（photos_api_server）
+### 图片存储和管理服务器（photos_api_server）
 
 负责接收来自客户端的图片，将其存储在云端，并对外提供 API 接口来查询和获取图片。
 
@@ -131,7 +131,7 @@ pip install -r requirements.txt
     python3.9 photos_api_server/app.py
     ```
 
-##### GPT 处理服务器（gpt_processing_server）
+### GPT 处理服务器（gpt_processing_server）
 
 负责接受来自客户端的请求，获取所需图片，调用 GPT-4 API 进行处理，并返回结果。
 
@@ -154,7 +154,7 @@ pip install -r requirements.txt
     python3.9 gpt_processing_server/app.py
     ```
 
-#### 参数说明
+## 参数说明
 
 以下是命令行参数的详细解析和介绍：
 
@@ -232,7 +232,7 @@ pip install -r requirements.txt
   
   **缺点**：某些旧设备或软件可能不支持现代图片格式，如 WebP。
 
-#### 示例
+## 示例
 
 以下是一些使用示例：
 
@@ -272,9 +272,9 @@ pip install -r requirements.txt
   python3.9 camera_client/main.py --device 2 --mode video --duration 600 --location living_room
   ```
 
-#### 架构说明
+## 架构说明
 
-##### 摄像头客户端（camera_client）
+### 摄像头客户端（camera_client）
 
 负责处理摄像头相关操作，包括捕获图片或视频，将其上传到服务器。
 
@@ -307,7 +307,7 @@ pip install -r requirements.txt
   3. `image_processing.py` 对图像进行预处理，如运动检测和图像相似性检测。
   4. 预处理后的图像通过 `upload.py` 上传到云端存储。
 
-##### GPT 对话客户端（gpt_client）
+### GPT 对话客户端（gpt_client）
 
 负责接受用户输入（文字或语音），将请求发送到服务器并接收处理结果。
 
@@ -334,7 +334,7 @@ pip install -r requirements.txt
   2. `audio_processing.py` 将语音转化为文字，并传递给 `request_handler.py`。
   3. `request_handler.py` 将用户问题和图片请求发送到 GPT 处理服务器，并接收处理结果。
 
-##### 图片存储和管理服务器（photos_api_server）
+### 图片存储和管理服务器（photos_api_server）
 
 负责接收来自客户端的图片，将其存储在云端，并对外提供 API 接口来查询和获取图片。
 
@@ -361,7 +361,7 @@ pip install -r requirements.txt
   2. `storage.py` 处理图片的存储和管理。
   3. `models.py` 使用 SQLAlchemy 管理图片的元数据，并提供查询接口。
 
-##### GPT 处理服务器（gpt_processing_server）
+### GPT 处理服务器（gpt_processing_server）
 
 负责接受来自客户端的请求，获取所需图片，调用 GPT-4 API 进行处理，并返回结果。
 
@@ -382,12 +382,12 @@ pip install -r requirements.txt
   1. `app.py` 负责启动 Flask 服务器，接收来自客户端的请求。
   2. `gpt_api.py` 处理请求，调用 GPT-4 API 进行图像分析，并返回处理结果。
 
-#### 注意事项
+## 注意事项
 
 - 请确保运行摄像头客户端脚本时，Python 解释器有摄像头访问权限。可以在 macOS 的“系统偏好设置” -> “安全性与隐私” -> “隐私” -> “相机”中进行设置。
 - 运行代码前，请关闭其他可能占用摄像头的应用程序（如 Photo Booth）。
 - 根据需求调整各参数，以达到最佳效果。
 
-#### 问题反馈
+## 问题反馈
 
 如果在使用过程中遇到任何问题，请提供详细的错误信息，以便进一步分析和排查。

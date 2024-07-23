@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 import os
 
 app = Flask(__name__)
@@ -10,8 +10,12 @@ def list_photos():
         photos = [os.path.join(PHOTOS_DIR, f) for f in os.listdir(PHOTOS_DIR) if os.path.isfile(os.path.join(PHOTOS_DIR, f))]
         # 按文件修改时间排序
         photos.sort(key=os.path.getmtime, reverse=True)
-        # 只取最近的10张照片
-        recent_photos = photos[:5]
+
+        # 获取查询参数 count，默认为 5
+        count = int(request.args.get('count', 5))
+
+        # 只取最近的 count 张照片
+        recent_photos = photos[:count]
         # 返回文件名列表，而不是完整路径
         recent_photos = [os.path.basename(photo) for photo in recent_photos]
         return jsonify({'photos': recent_photos})

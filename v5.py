@@ -17,9 +17,9 @@ def encode_image(image_path):
         return base64.b64encode(image_file.read()).decode('utf-8')
 
 # Function to get recent photos from API
-def get_recent_photos(api_url):
+def get_recent_photos(api_url, count):
     try:
-        response = requests.get(api_url)
+        response = requests.get(api_url, params={'count': count})
         response.raise_for_status()
         data = response.json()
         return data.get('photos', [])
@@ -74,9 +74,10 @@ def gpt4_visual_test(image_paths, question):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Ask a question to GPT-4 visual model.')
     parser.add_argument('--question', type=str, required=True, help='The question to ask about the images.')
+    parser.add_argument('--count', type=int, default=5, help='The number of recent photos to fetch from the API.')
     args = parser.parse_args()
 
-    recent_photos = get_recent_photos(PHOTOS_API_URL)
+    recent_photos = get_recent_photos(PHOTOS_API_URL, args.count)
     image_paths = [os.path.join(PHOTOS_DIR, photo) for photo in recent_photos]
     result = gpt4_visual_test(image_paths, args.question)
     print("GPT-4 Visual Response:", result)

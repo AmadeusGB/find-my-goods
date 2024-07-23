@@ -60,11 +60,11 @@ def gpt4_visual_test(image_paths):
 
 if __name__ == "__main__":
     image_paths = [
-        "photos/living_room_iphone_motion_photo_2.jpg",
-        "photos/living_room_iphone_motion_photo_3.jpg",
-        "photos/living_room_iphone_motion_photo_4.jpg",
-        "photos/living_room_iphone_motion_photo_5.jpg",
-        "photos/living_room_iphone_motion_photo_6.jpg"
+        "photos/bedroom_iphone_motion_photo_0.jpg",
+        "photos/bedroom_iphone_motion_photo_2.jpg",
+        "photos/bedroom_iphone_motion_photo_3.jpg",
+        "photos/bedroom_iphone_motion_photo_4.jpg",
+        "photos/bedroom_iphone_motion_photo_5.jpg"
     ]
     result = gpt4_visual_test(image_paths)
     print("GPT-4 Visual Response:", result)

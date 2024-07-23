@@ -6,9 +6,14 @@ from datetime import datetime
 
 def add_timestamp(frame, timestamp, sequence_number, location):
     font = cv2.FONT_HERSHEY_SIMPLEX
-    cv2.putText(frame, f'Time: {timestamp}', (10, 30), font, 0.7, (0, 255, 0), 2, cv2.LINE_AA)
-    cv2.putText(frame, f'Seq: {sequence_number}', (10, 60), font, 0.7, (0, 255, 0), 2, cv2.LINE_AA)
-    cv2.putText(frame, f'Location: {location}', (10, 90), font, 0.7, (0, 255, 0), 2, cv2.LINE_AA)
+    font_scale = 1.0  # 增大字体大小
+    font_thickness = 2  # 增加描边宽度
+    text_color = (0, 255, 0)  # 文字颜色
+    line_type = cv2.LINE_AA  # 线条类型
+
+    cv2.putText(frame, f'Time: {timestamp}', (10, 30), font, font_scale, text_color, font_thickness, line_type)
+    cv2.putText(frame, f'Seq: {sequence_number}', (10, 60), font, font_scale, text_color, font_thickness, line_type)
+    cv2.putText(frame, f'Location: {location}', (10, 90), font, font_scale, text_color, font_thickness, line_type)
     return frame
 
 def detect_motion(prev_gray, curr_gray, threshold=60, min_contour_area=4000):
@@ -23,6 +28,11 @@ def detect_motion(prev_gray, curr_gray, threshold=60, min_contour_area=4000):
     motion_detected = any(cv2.contourArea(contour) > min_contour_area for contour in contours)
     return motion_detected
 
+def configure_camera(cap):
+    # 设置曝光值（快门速度）和ISO值
+    cap.set(cv2.CAP_PROP_EXPOSURE, -6)  # 尝试设置一个较低的曝光值
+    cap.set(cv2.CAP_PROP_GAIN, 0)  # ISO值通常通过增益来控制
+
 def capture_images(device_index, interval=60, duration=600, save_dir='photos', threshold=60, min_contour_area=4000, detection_interval=1, location='unknown', image_format='webp'):
     # 确保 photos 目录存在
     os.makedirs(save_dir, exist_ok=True)
@@ -31,6 +41,8 @@ def capture_images(device_index, interval=60, duration=600, save_dir='photos', t
     if not cap.isOpened():
         print(f"Error: Could not open camera with index {device_index}.")
         return
+
+    configure_camera(cap)
 
     device_name = 'computer' if device_index == 1 else 'iphone'
     start_time = time.time()
@@ -46,52 +58,55 @@ def capture_images(device_index, interval=60, duration=600, save_dir='photos', t
     prev_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
     prev_gray = cv2.GaussianBlur(prev_gray, (21, 21), 0)
 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            print(f"Error: Could not read frame from camera with index {device_index}.")
-            break
+    try:
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                print(f"Error: Could not read frame from camera with index {device_index}.")
+                break
 
-        current_time = time.time()
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            current_time = time.time()
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        if current_time - last_detection_time >= detection_interval:
-            gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            gray_frame = cv2.GaussianBlur(gray_frame, (21, 21), 0)
-            motion_detected = detect_motion(prev_gray, gray_frame, threshold=threshold, min_contour_area=min_contour_area)
-            last_detection_time = current_time
+            if current_time - last_detection_time >= detection_interval:
+                gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                gray_frame = cv2.GaussianBlur(gray_frame, (21, 21), 0)
+                motion_detected = detect_motion(prev_gray, gray_frame, threshold=threshold, min_contour_area=min_contour_area)
+                last_detection_time = current_time
 
-            if motion_detected:
+                if motion_detected:
+                    frame_with_timestamp = add_timestamp(frame.copy(), timestamp, image_count, location)
+                    save_path = os.path.join(save_dir, f'{location}_{device_name}_motion_photo_{image_count}.{image_format}')
+                    cv2.imwrite(save_path, frame_with_timestamp)
+                    print(f"Motion detected. Photo saved as {save_path}")
+                    image_count += 1
+
+            if current_time - last_capture_time >= interval:
                 frame_with_timestamp = add_timestamp(frame.copy(), timestamp, image_count, location)
-                save_path = os.path.join(save_dir, f'{location}_{device_name}_motion_photo_{image_count}.{image_format}')
+                save_path = os.path.join(save_dir, f'{location}_{device_name}_interval_photo_{image_count}.{image_format}')
                 cv2.imwrite(save_path, frame_with_timestamp)
-                print(f"Motion detected. Photo saved as {save_path}")
+                print(f"Interval capture. Photo saved as {save_path}")
                 image_count += 1
+                last_capture_time = current_time
 
-        if current_time - last_capture_time >= interval:
-            frame_with_timestamp = add_timestamp(frame.copy(), timestamp, image_count, location)
-            save_path = os.path.join(save_dir, f'{location}_{device_name}_interval_photo_{image_count}.{image_format}')
-            cv2.imwrite(save_path, frame_with_timestamp)
-            print(f"Interval capture. Photo saved as {save_path}")
-            image_count += 1
-            last_capture_time = current_time
+            cv2.imshow(f'Camera {device_index}', frame)
 
-        cv2.imshow(f'Camera {device_index}', frame)
+            # 更新上一帧
+            prev_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            prev_gray = cv2.GaussianBlur(prev_gray, (21, 21), 0)
 
-        # 更新上一帧
-        prev_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        prev_gray = cv2.GaussianBlur(prev_gray, (21, 21), 0)
+            # 按 'q' 键退出循环
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
 
-        # 按 'q' 键退出循环
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-
-        # 运行到指定时长后退出
-        if current_time - start_time >= duration:
-            break
-
-    cap.release()
-    cv2.destroyAllWindows()
+            # 运行到指定时长后退出
+            if current_time - start_time >= duration:
+                break
+    except KeyboardInterrupt:
+        print("Capture interrupted by user.")
+    finally:
+        cap.release()
+        cv2.destroyAllWindows()
 
 def record_video(device_index, duration=600, save_dir='videos', location='unknown'):
     os.makedirs(save_dir, exist_ok=True)
@@ -99,6 +114,8 @@ def record_video(device_index, duration=600, save_dir='videos', location='unknow
     if not cap.isOpened():
         print(f"Error: Could not open camera with index {device_index}.")
         return
+
+    configure_camera(cap)
 
     device_name = 'computer' if device_index == 1 else 'iphone'
     start_time = time.time()
@@ -130,7 +147,7 @@ def record_video(device_index, duration=600, save_dir='videos', location='unknow
             if time.time() - start_time >= duration:
                 break
     except KeyboardInterrupt:
-        print("Recording interrupted.")
+        print("Recording interrupted by user.")
     finally:
         cap.release()
         out.release()

@@ -2,7 +2,7 @@
 
 ## 项目简介
 
-本项目旨在构建一个基于 Python 和 OpenCV 的分布式摄像头监控和分析系统，通过云端存储和 GPT-4 API，实现对用户提出的问题进行图像分析和回答。该系统包含四个主要模块：摄像头客户端（camera_client）、GPT 对话客户端（gpt_client）、图片存储和管理服务器（photos_api_server）以及 GPT 处理服务器（gpt_processing_server）。
+本项目旨在构建一个基于 Python 和 OpenCV 的分布式摄像头监控和分析系统，通过云端存储和 GPT-4o API，实现对用户提出的问题进行图像分析和回答。该系统包含四个主要模块：摄像头客户端（camera_client）、GPT 对话客户端（gpt_client）、图片存储和管理服务器（photos_api_server）以及 GPT 处理服务器（gpt_processing_server）。
 
 ## 目录结构
 

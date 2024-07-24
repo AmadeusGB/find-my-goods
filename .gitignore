@@ -2,3 +2,4 @@
 photos/
 videos/
 .env
+image_to_text_prompt.txt

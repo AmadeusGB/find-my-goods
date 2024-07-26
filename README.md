@@ -149,7 +149,7 @@ Handles user input (text or voice), sends requests to the server, and receives p
 - **Usage Examples**:
   - Ask a question via text and get image analysis results:
     ```bash
-    python3.9 gpt_client/main.py --question "Where is the red bag?" --count 5
+    python3.9 gpt_client/v1.py
     ```
 
 ### Photo Storage and Management Server (photos_api_server)
@@ -172,7 +172,7 @@ Handles receiving images from clients, storing them in the cloud, and providing 
 - **Running Example**:
   - Start the photo storage and management server:
     ```bash
-    python3.9 photos_api_server/app.py
+    uvicorn gpt_processing_server.v6:app --reload
     ```
 
 ### GPT Processing Server (gpt_processing_server)

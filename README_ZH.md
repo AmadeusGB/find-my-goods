@@ -148,7 +148,7 @@ pip install -r requirements.txt
 - **使用示例**：
   - 通过文字询问问题并获取图片分析结果：
     ```bash
-    python3.9 gpt_client/main.py --question "红色的袋子在哪里？" --count 5
+    python3.9 gpt_client/v1.py
     ```
 
 ### 图片存储和管理服务器（photos_api_server）
@@ -171,7 +171,7 @@ pip install -r requirements.txt
 - **运行示例**：
   - 启动图片存储和管理服务器：
     ```bash
-    python3.9 photos_api_server/app.py
+    uvicorn gpt_processing_server.v6:app --reload
     ```
 
 ### GPT 处理服务器（gpt_processing_server）

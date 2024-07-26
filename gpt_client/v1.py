@@ -1,31 +1,39 @@
-import os
-from openai import OpenAI
+import requests
+import re
+import codecs
 
-# 从环境变量中读取 API 密钥
-api_key = os.getenv('OPENAI_API_KEY')
-if not api_key:
-    raise ValueError("API key not found. Please set the OPENAI_API_KEY environment variable.")
+API_URL = "http://127.0.0.1:8000/ask"
+QUESTION = "红色的袋子在哪里?"
+COUNT = 5
 
-client = OpenAI(api_key=api_key)
+# Function to decode Unicode escape sequences
+def decode_unicode(s):
+    return re.sub(r'\\u([0-9A-Fa-f]{4})', lambda m: chr(int(m.group(1), 16)), s)
 
-def gpt4_test(prompt):
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt},
-            ],
-            max_tokens=150,
-            n=1,
-            stop=None,
-            temperature=0.7
-        )
-        return response.choices[0].message.content.strip()
-    except Exception as e:
-        return f"An error occurred: {e}"
+def parse_openai_stream(raw_response):
+    text_decoder = codecs.getdecoder('utf-8')
+
+    for chunk in raw_response.iter_content(chunk_size=512):
+        if chunk:
+            decoded_chunk = text_decoder(chunk)[0]
+            matches = re.finditer(r'"content":\s*"(.*?)"', decoded_chunk)
+            for match in matches:
+                text = match.group(1)
+                text = text.replace('\\n', '\n')
+                text = decode_unicode(text)
+                if text != '\0':
+                    print(text, end='', flush=True)
+
+def main():
+    payload = {
+        "question": QUESTION,
+        "count": COUNT
+    }
+
+    response = requests.post(API_URL, json=payload, stream=True)
+    response.raise_for_status()
+
+    parse_openai_stream(response)
 
 if __name__ == "__main__":
-    prompt = "你是谁？介绍一下"
-    result = gpt4_test(prompt)
-    print("GPT-4 Response:", result)
+    main()

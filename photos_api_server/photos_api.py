@@ -22,5 +22,20 @@ def list_photos():
     except FileNotFoundError:
         return jsonify({'error': 'Photos directory not found'}), 404
 
+@app.route('/api/upload', methods=['POST'])
+def upload_photo():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+
+    if file:
+        filename = file.filename
+        save_path = os.path.join(PHOTOS_DIR, filename)
+        file.save(save_path)
+        return jsonify({'message': 'File uploaded successfully', 'filename': filename}), 200
+    
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001)

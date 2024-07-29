@@ -3,7 +3,8 @@ import cv2
 import os
 from datetime import datetime
 from camera_utils import init_camera, release_camera
-from image_processing import detect_motion, is_similar, save_image
+from image_processing import detect_motion, is_similar
+from upload import upload_image
 
 def capture_images(device_index, interval, duration, save_dir, threshold, min_contour_area, detection_interval, location, image_format):
     os.makedirs(save_dir, exist_ok=True)
@@ -39,7 +40,10 @@ def capture_images(device_index, interval, duration, save_dir, threshold, min_co
                     motion_frames += 1
                     if motion_frames >= required_motion_frames:
                         if prev_saved_image is None or not is_similar(prev_saved_image, frame):
-                            prev_saved_image = save_image(frame, save_dir, location, device_name, image_count, image_format, 'motion')
+                            image_path = os.path.join(save_dir, f'{location}_{device_name}_motion_photo_{image_count}.{image_format}')
+                            cv2.imwrite(image_path, frame)  # Save image to disk
+                            upload_image(image_path)  # Upload image
+                            prev_saved_image = frame
                             image_count += 1
                         motion_frames = 0
                 else:
@@ -47,7 +51,10 @@ def capture_images(device_index, interval, duration, save_dir, threshold, min_co
 
             if current_time - last_capture_time >= interval:
                 if prev_saved_image is None or not is_similar(prev_saved_image, frame):
-                    prev_saved_image = save_image(frame, save_dir, location, device_name, image_count, image_format, 'interval')
+                    image_path = os.path.join(save_dir, f'{location}_{device_name}_interval_photo_{image_count}.{image_format}')
+                    cv2.imwrite(image_path, frame)  # Save image to disk
+                    upload_image(image_path)  # Upload image
+                    prev_saved_image = frame
                     image_count += 1
                 last_capture_time = current_time
 

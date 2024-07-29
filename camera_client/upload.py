@@ -1,9 +1,7 @@
-# camera_client/upload.py
-
 import requests
 import os
 
-def upload_image(image_path, server_url):
+def upload_image(image_path, server_url='http://127.0.0.1:5001/api/upload'):
     with open(image_path, 'rb') as img_file:
         files = {'file': img_file}
         response = requests.post(server_url, files=files)

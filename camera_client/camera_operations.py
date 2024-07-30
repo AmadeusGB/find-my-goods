@@ -40,9 +40,10 @@ def capture_images(device_index, interval, duration, save_dir, threshold, min_co
                     motion_frames += 1
                     if motion_frames >= required_motion_frames:
                         if prev_saved_image is None or not is_similar(prev_saved_image, frame):
+                            timestamp = datetime.now().isoformat()
                             image_path = os.path.join(save_dir, f'{location}_{device_name}_motion_photo_{image_count}.{image_format}')
                             cv2.imwrite(image_path, frame)  # Save image to disk
-                            upload_image(image_path)  # Upload image
+                            upload_image(image_path, location, timestamp)  # Upload image with location and timestamp
                             prev_saved_image = frame
                             image_count += 1
                         motion_frames = 0
@@ -51,9 +52,10 @@ def capture_images(device_index, interval, duration, save_dir, threshold, min_co
 
             if current_time - last_capture_time >= interval:
                 if prev_saved_image is None or not is_similar(prev_saved_image, frame):
+                    timestamp = datetime.now().isoformat()
                     image_path = os.path.join(save_dir, f'{location}_{device_name}_interval_photo_{image_count}.{image_format}')
                     cv2.imwrite(image_path, frame)  # Save image to disk
-                    upload_image(image_path)  # Upload image
+                    upload_image(image_path, location, timestamp)  # Upload image with location and timestamp
                     prev_saved_image = frame
                     image_count += 1
                 last_capture_time = current_time

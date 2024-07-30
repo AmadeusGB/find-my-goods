@@ -1,24 +1,28 @@
 from flask import Flask, jsonify, request
 import os
-import requests
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from datetime import datetime
+from dotenv import load_dotenv
+import uuid
+import json
+
+load_dotenv()
 
 app = Flask(__name__)
-PHOTOS_DIR = 'photos'
-DESCRIBE_API_URL = 'http://127.0.0.1:8000/describe'
+
+PHOTOS_DIR = os.getenv('PHOTOS_DIR', 'photos')
+DATABASE_URL = os.getenv('DATABASE_URL', 'dbname=pgdatabase user=pguser password=pgpassword host=localhost')
+CONNECTION = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
 
 @app.route('/api/photos', methods=['GET'])
 def list_photos():
     try:
         photos = [os.path.join(PHOTOS_DIR, f) for f in os.listdir(PHOTOS_DIR) if os.path.isfile(os.path.join(PHOTOS_DIR, f))]
-        # 按文件修改时间排序
         photos.sort(key=os.path.getmtime, reverse=True)
 
-        # 获取查询参数 count，默认为 5
         count = int(request.args.get('count', 5))
-
-        # 只取最近的 count 张照片
         recent_photos = photos[:count]
-        # 返回文件名列表，而不是完整路径
         recent_photos = [os.path.basename(photo) for photo in recent_photos]
         return jsonify({'photos': recent_photos})
     except FileNotFoundError:
@@ -30,25 +34,37 @@ def upload_photo():
         return jsonify({'error': 'No file part'}), 400
 
     file = request.files['file']
+    location = request.form.get('location')
+    timestamp = request.form.get('timestamp')
+
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
 
-    if file:
+    if file and location and timestamp:
         filename = file.filename
         save_path = os.path.join(PHOTOS_DIR, filename)
         file.save(save_path)
-        
-        # 调用 /describe 接口
-        describe_response = requests.post(
-            DESCRIBE_API_URL,
-            json={'filename': filename}
-        )
-        
-        if describe_response.status_code != 200:
-            return jsonify({'message': 'File uploaded but description failed', 'filename': filename}), 200
-        
-        description = describe_response.json().get('description')
-        return jsonify({'message': 'File uploaded successfully', 'filename': filename, 'description': description}), 200
+
+        image_id = uuid.uuid4()
+
+        zero_vector = [0.0] * 768
+
+        with CONNECTION.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO image_queue (image_id, s3_url, status, timestamp, location)
+                VALUES (%s, %s, 'pending', %s, %s)
+            """, (str(image_id), save_path, timestamp, location))
+            
+            cursor.execute("""
+                INSERT INTO image_metadata (image_id, description, vector)
+                VALUES (%s, '{}', %s)
+            """, (str(image_id), json.dumps(zero_vector)))
+            
+            CONNECTION.commit()
+
+        return jsonify({'message': 'File uploaded and queued successfully', 'filename': filename}), 200
+
+    return jsonify({'error': 'Missing required parameters'}), 400
 
 if __name__ == '__main__':
     if not os.path.exists(PHOTOS_DIR):

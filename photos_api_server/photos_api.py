@@ -1,8 +1,10 @@
 from flask import Flask, jsonify, request
 import os
+import requests
 
 app = Flask(__name__)
 PHOTOS_DIR = 'photos'
+DESCRIBE_API_URL = 'http://127.0.0.1:8000/describe'
 
 @app.route('/api/photos', methods=['GET'])
 def list_photos():
@@ -35,7 +37,20 @@ def upload_photo():
         filename = file.filename
         save_path = os.path.join(PHOTOS_DIR, filename)
         file.save(save_path)
-        return jsonify({'message': 'File uploaded successfully', 'filename': filename}), 200
-    
+        
+        # 调用 /describe 接口
+        describe_response = requests.post(
+            DESCRIBE_API_URL,
+            json={'filename': filename}
+        )
+        
+        if describe_response.status_code != 200:
+            return jsonify({'message': 'File uploaded but description failed', 'filename': filename}), 200
+        
+        description = describe_response.json().get('description')
+        return jsonify({'message': 'File uploaded successfully', 'filename': filename, 'description': description}), 200
+
 if __name__ == '__main__':
+    if not os.path.exists(PHOTOS_DIR):
+        os.makedirs(PHOTOS_DIR)
     app.run(host='0.0.0.0', port=5001)

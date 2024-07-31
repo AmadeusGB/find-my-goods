@@ -177,14 +177,11 @@ def handle_notification(notification):
             prompt = file.read().strip()
 
         description = describe_image(s3_url, prompt)
-        print(f"Description for {s3_url}: {description}")
 
         # 更新描述信息中的字段
         description = description.replace('unique_image_id', s3_url)
         description = description.replace('YYYY-MM-DDTHH:MM:SS', timestamp.strftime('%Y-%m-%dT%H:%M:%S'))
         description = description.replace('home', location)
-        
-        print(f"Description_after for {s3_url}: {description}")
 
         # 使用模型将描述进行向量化
         vector = [0.0] * 768

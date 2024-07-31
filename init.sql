@@ -44,7 +44,7 @@ EXECUTE FUNCTION update_timestamp();
 CREATE TABLE image_metadata (
     id SERIAL PRIMARY KEY,
     image_id UUID NOT NULL,
-    description JSONB NOT NULL,
+    description TEXT NOT NULL,
     vector vector(768) NOT NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(image_id)
@@ -52,3 +52,18 @@ CREATE TABLE image_metadata (
 
 CREATE INDEX idx_image_id_metadata ON image_metadata (image_id);
 CREATE INDEX idx_vector_metadata ON image_metadata USING ivfflat (vector);
+
+-- 创建触发器函数
+CREATE OR REPLACE FUNCTION notify_image_queue_insert()
+RETURNS TRIGGER AS $$
+BEGIN
+    PERFORM pg_notify('image_queue_insert', json_build_object('image_id', NEW.image_id)::text);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 创建触发器
+CREATE TRIGGER image_queue_insert_trigger
+AFTER INSERT ON image_queue
+FOR EACH ROW
+EXECUTE FUNCTION notify_image_queue_insert();

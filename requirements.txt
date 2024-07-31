@@ -5,3 +5,4 @@ SQLAlchemy==1.4.18
 scikit-image==0.18.1
 requests==2.25.1
 python-dotenv==0.17.1
+sentence-transformers

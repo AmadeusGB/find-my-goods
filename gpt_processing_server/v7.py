@@ -159,6 +159,21 @@ async def describe_image_endpoint(request: DescribeImageRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+def vectorize_text(text):
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}"
+    }
+
+    payload = {
+        "model": "text-embedding-3-small",
+        "input": text
+    }
+
+    response = requests.post("https://api.openai.com/v1/embeddings", headers=headers, json=payload)
+    response.raise_for_status()
+    return response.json()["data"][0]["embedding"]
+
 def handle_notification(notification):
     payload = json.loads(notification.payload)
     image_id = payload.get('image_id')
@@ -182,9 +197,9 @@ def handle_notification(notification):
         description = description.replace('unique_image_id', s3_url)
         description = description.replace('YYYY-MM-DDTHH:MM:SS', timestamp.strftime('%Y-%m-%dT%H:%M:%S'))
         description = description.replace('home', location)
-
-        # 使用模型将描述进行向量化
-        vector = [0.0] * 768
+        
+        # 使用 GPT-4 Embeddings 将描述进行向量化
+        vector = vectorize_text(description)
 
         # 更新 image_metadata 表
         cursor.execute("""

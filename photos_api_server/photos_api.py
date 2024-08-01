@@ -47,7 +47,7 @@ def upload_photo():
 
         image_id = uuid.uuid4()
 
-        zero_vector = [0.0] * 768
+        zero_vector = [0.0] * 1536
 
         with CONNECTION.cursor() as cursor:
             cursor.execute("""

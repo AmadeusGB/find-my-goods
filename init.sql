@@ -45,7 +45,7 @@ CREATE TABLE image_metadata (
     id SERIAL PRIMARY KEY,
     image_id UUID NOT NULL,
     description TEXT NOT NULL,
-    vector vector(768) NOT NULL,
+    vector vector(1536) NOT NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(image_id)
 );

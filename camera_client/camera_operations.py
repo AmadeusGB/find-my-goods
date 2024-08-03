@@ -10,6 +10,10 @@ def capture_images(device_index, interval, duration, save_dir, threshold, min_co
     os.makedirs(save_dir, exist_ok=True)
 
     cap = init_camera(device_index)
+    if not cap.isOpened():
+        print(f"Error: Could not open camera with index {device_index}.")
+        return
+
     device_name = 'computer' if device_index == 1 else 'iphone'
     start_time = time.time()
     last_capture_time = 0
@@ -22,7 +26,7 @@ def capture_images(device_index, interval, duration, save_dir, threshold, min_co
         motion_frames = 0
         required_motion_frames = 3
 
-        while True:
+        while time.time() - start_time < duration:
             ret, frame = cap.read()
             if not ret:
                 print(f"Error: Could not read frame from camera with index {device_index}.")
@@ -40,11 +44,8 @@ def capture_images(device_index, interval, duration, save_dir, threshold, min_co
                     motion_frames += 1
                     if motion_frames >= required_motion_frames:
                         if prev_saved_image is None or not is_similar(prev_saved_image, frame):
-                            timestamp = datetime.now().isoformat()
-                            image_path = os.path.join(save_dir, f'{location}_{device_name}_motion_photo_{image_count}.{image_format}')
-                            cv2.imwrite(image_path, frame)  # Save image to disk
-                            upload_image(image_path, location, timestamp)  # Upload image with location and timestamp
-                            prev_saved_image = frame
+                            save_and_upload_image(frame, save_dir, location, device_name, "motion", image_count, image_format)
+                            prev_saved_image = frame.copy()
                             image_count += 1
                         motion_frames = 0
                 else:
@@ -52,11 +53,8 @@ def capture_images(device_index, interval, duration, save_dir, threshold, min_co
 
             if current_time - last_capture_time >= interval:
                 if prev_saved_image is None or not is_similar(prev_saved_image, frame):
-                    timestamp = datetime.now().isoformat()
-                    image_path = os.path.join(save_dir, f'{location}_{device_name}_interval_photo_{image_count}.{image_format}')
-                    cv2.imwrite(image_path, frame)  # Save image to disk
-                    upload_image(image_path, location, timestamp)  # Upload image with location and timestamp
-                    prev_saved_image = frame
+                    save_and_upload_image(frame, save_dir, location, device_name, "interval", image_count, image_format)
+                    prev_saved_image = frame.copy()
                     image_count += 1
                 last_capture_time = current_time
 
@@ -65,19 +63,26 @@ def capture_images(device_index, interval, duration, save_dir, threshold, min_co
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
-            if current_time - start_time >= duration:
-                break
     except KeyboardInterrupt:
         print("Capture interrupted by user.")
     finally:
         release_camera(cap)
+        cv2.destroyAllWindows()
+
+def save_and_upload_image(frame, save_dir, location, device_name, capture_type, image_count, image_format):
+    timestamp = datetime.now().isoformat()
+    image_path = os.path.join(save_dir, f'{location}_{device_name}_{capture_type}_photo_{image_count}.{image_format}')
+    cv2.imwrite(image_path, frame)
+    upload_image(image_path, location, timestamp)
 
 def record_video(device_index, duration, save_dir, location):
     os.makedirs(save_dir, exist_ok=True)
     cap = init_camera(device_index)
+    if not cap.isOpened():
+        print(f"Error: Could not open camera with index {device_index}.")
+        return
 
     device_name = 'computer' if device_index == 1 else 'iphone'
-    start_time = time.time()
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     save_path = os.path.join(save_dir, f'{location}_{device_name}_video_{timestamp}.mp4')
 
@@ -90,7 +95,8 @@ def record_video(device_index, duration, save_dir, location):
         return
 
     try:
-        while True:
+        start_time = time.time()
+        while time.time() - start_time < duration:
             ret, frame = cap.read()
             if not ret:
                 print(f"Error: Could not read frame from camera with index {device_index}.")
@@ -102,11 +108,10 @@ def record_video(device_index, duration, save_dir, location):
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
-            if time.time() - start_time >= duration:
-                break
     except KeyboardInterrupt:
         print("Recording interrupted by user.")
     finally:
         out.release()
         release_camera(cap)
+        cv2.destroyAllWindows()
         print(f"Video saved as {save_path}")

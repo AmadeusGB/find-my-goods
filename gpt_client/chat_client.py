@@ -2,7 +2,7 @@ import requests
 import re
 import codecs
 
-API_URL = "http://127.0.0.1:8000/ask"
+API_URL = "http://127.0.0.1:8000/api/ask"
 QUESTION = "红色的袋子在哪里?"
 COUNT = 5
 

@@ -1,16 +1,17 @@
 import os
 import base64
 import json
+import uuid
 import requests
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import StreamingResponse
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Query
+from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
+from typing import List, Optional
 
 load_dotenv()
 
@@ -27,6 +28,102 @@ app = FastAPI()
 CONNECTION = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
 CONNECTION.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
 
+# New function for database connection
+def get_db_connection():
+    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+
+class UploadResponse(BaseModel):
+    message: str
+    filename: str
+
+@app.post("/api/upload", response_model=UploadResponse)
+async def upload_photo(
+    file: UploadFile = File(...),
+    location: str = Form(...),
+    timestamp: str = Form(...)
+):
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No selected file")
+
+    if file and location and timestamp:
+        filename = file.filename
+        save_path = os.path.join(PHOTOS_DIR, filename)
+        
+        with open(save_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+
+        image_id = str(uuid.uuid4())
+        zero_vector = [0.0] * 1536
+
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO image_queue (image_id, s3_url, status, timestamp, location)
+                    VALUES (%s, %s, 'pending', %s, %s)
+                """, (image_id, save_path, timestamp, location))
+
+                cursor.execute("""
+                    INSERT INTO image_metadata (image_id, description, vector)
+                    VALUES (%s, %s, %s)
+                """, (image_id, '{}', json.dumps(zero_vector)))
+
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        finally:
+            conn.close()
+
+        return {"message": "File uploaded and queued successfully", "filename": filename}
+    
+    raise HTTPException(status_code=400, detail="Missing required parameters")
+
+class ImageMetadata(BaseModel):
+    description: Optional[str] = None
+    vector: Optional[List[float]] = None
+
+@app.get("/api/image_metadata/{image_id}", response_model=ImageMetadata)
+async def get_image_metadata(
+    image_id: str,
+    include_description: bool = Query(True, description="Include description in the response"),
+    include_vector: bool = Query(False, description="Include vector in the response")
+):
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            query = "SELECT "
+            select_parts = []
+            if include_description:
+                select_parts.append("description")
+            if include_vector:
+                select_parts.append("vector")
+            
+            if not select_parts:
+                raise HTTPException(status_code=400, detail="At least one of description or vector must be requested")
+            
+            query += ", ".join(select_parts)
+            query += " FROM image_metadata WHERE image_id = %s"
+
+            cursor.execute(query, (image_id,))
+            result = cursor.fetchone()
+
+            if not result:
+                raise HTTPException(status_code=404, detail="Image metadata not found")
+
+            response = ImageMetadata()
+            if include_description and 'description' in result:
+                response.description = result['description']
+            if include_vector and 'vector' in result:
+                response.vector = json.loads(result['vector'])
+
+            return response
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    finally:
+        conn.close()
+        
 # Function to encode the image
 def encode_image(image_path):
     with open(image_path, "rb") as image_file:
@@ -239,9 +336,13 @@ if __name__ == "__main__":
     import uvicorn
     from threading import Thread
 
-    # 启动监听通知的线程
-    notification_thread = Thread(target=listen_notifications, daemon=True)
+    # Create PHOTOS_DIR if it doesn't exist
+    if not os.path.exists(PHOTOS_DIR):
+        os.makedirs(PHOTOS_DIR)
+
+    # Start the notification listener thread
+    notification_thread = Thread(target=listen_to_notifications, daemon=True)
     notification_thread.start()
 
-    # 启动 FastAPI 服务器
-    uvicorn.run("gpt_processing_server.v7:app", host="127.0.0.1", port=8000, reload=True)
+    # Start the FastAPI server
+    uvicorn.run("v7:app", host="127.0.0.1", port=8000, reload=True)

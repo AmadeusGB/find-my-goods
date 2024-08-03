@@ -8,6 +8,7 @@ from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 
@@ -90,6 +91,10 @@ def gpt4_visual_test(image_paths, question):
 class QuestionRequest(BaseModel):
     question: str
     count: int = 5
+
+@app.get("/api/ping")
+async def ping_pong():
+    return JSONResponse(content={"message": "pong"})
 
 @app.post("/api/ask")
 async def ask_gpt4_visual(request: QuestionRequest):

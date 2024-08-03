@@ -26,6 +26,10 @@ class UploadResponse(BaseModel):
     message: str
     filename: str
 
+@app.get("/api/ping")
+async def ping_pong():
+    return JSONResponse(content={"message": "pong"})
+
 @app.get("/api/photos", response_model=PhotoList)
 async def list_photos(count: int = 5):
     try:

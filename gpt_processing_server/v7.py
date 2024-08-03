@@ -91,7 +91,7 @@ class QuestionRequest(BaseModel):
     question: str
     count: int = 5
 
-@app.post("/ask")
+@app.post("/api/ask")
 async def ask_gpt4_visual(request: QuestionRequest):
     try:
         recent_photos = get_recent_photos(PHOTOS_API_URL, request.count)
@@ -143,7 +143,7 @@ def describe_image(image_path, prompt):
 class DescribeImageRequest(BaseModel):
     filename: str
 
-@app.post("/describe")
+@app.post("/api/describe")
 async def describe_image_endpoint(request: DescribeImageRequest):
     try:
         image_path = os.path.join(PHOTOS_DIR, request.filename)

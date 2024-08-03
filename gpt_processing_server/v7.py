@@ -24,8 +24,6 @@ PHOTOS_DIR = 'photos'
 
 app = FastAPI()
 
-model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
-
 CONNECTION = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
 CONNECTION.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
 
@@ -34,13 +32,11 @@ def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
 
-# Function to get recent photos from API
-def get_recent_photos(api_url, count):
+def get_recent_photos(count):
     try:
-        response = requests.get(api_url, params={'count': count})
-        response.raise_for_status()
-        data = response.json()
-        return data.get('photos', [])
+        photos = [f for f in os.listdir(PHOTOS_DIR) if os.path.isfile(os.path.join(PHOTOS_DIR, f))]
+        photos.sort(key=lambda x: os.path.getmtime(os.path.join(PHOTOS_DIR, x)), reverse=True)
+        return photos[:count]
     except Exception as e:
         print(f"An error occurred while fetching recent photos: {e}")
         return []
@@ -99,7 +95,7 @@ async def ping_pong():
 @app.post("/api/ask")
 async def ask_gpt4_visual(request: QuestionRequest):
     try:
-        recent_photos = get_recent_photos(PHOTOS_API_URL, request.count)
+        recent_photos = get_recent_photos(request.count)
         image_paths = [os.path.join(PHOTOS_DIR, photo) for photo in recent_photos]
         return gpt4_visual_test(image_paths, request.question)
     except Exception as e:

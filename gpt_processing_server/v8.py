@@ -2,17 +2,17 @@ import os
 import base64
 import json
 import uuid
+import asyncio
 from typing import List, Optional
 from functools import lru_cache
+from datetime import datetime, timezone
 
-import requests
-import psycopg2
-from psycopg2.extras import RealDictCursor
-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-from dotenv import load_dotenv
+import aiohttp
+import asyncpg
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Query, Depends
 from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -26,17 +26,17 @@ PHOTOS_DIR = 'photos'
 
 app = FastAPI()
 
-# Function to get a new database connection
-def get_db_connection():
-    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+# Use asyncpg for asynchronous database operations
+async def get_db_pool():
+    return await asyncpg.create_pool(DATABASE_URL)
 
-# Dependency to get a database connection
-async def get_db():
-    conn = get_db_connection()
-    try:
-        yield conn
-    finally:
-        conn.close()
+@app.on_event("startup")
+async def startup_event():
+    app.state.db_pool = await get_db_pool()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await app.state.db_pool.close()
 
 class UploadResponse(BaseModel):
     message: str
@@ -53,12 +53,12 @@ class QuestionRequest(BaseModel):
 class DescribeImageRequest(BaseModel):
     filename: str
 
+
 @app.post("/api/upload", response_model=UploadResponse)
 async def upload_photo(
     file: UploadFile = File(...),
     location: str = Form(...),
-    timestamp: str = Form(...),
-    db: psycopg2.extensions.connection = Depends(get_db)
+    timestamp: str = Form(...)
 ):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No selected file")
@@ -73,22 +73,27 @@ async def upload_photo(
     image_id = str(uuid.uuid4())
     zero_vector = [0.0] * 1536
 
+    # Convert timestamp string to UTC datetime object
     try:
-        with db.cursor() as cursor:
-            cursor.execute("""
+        timestamp_dt = datetime.fromisoformat(timestamp)
+        if timestamp_dt.tzinfo is None:
+            timestamp_dt = timestamp_dt.replace(tzinfo=timezone.utc)
+        else:
+            timestamp_dt = timestamp_dt.astimezone(timezone.utc)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid timestamp format. Expected ISO format.")
+
+    async with app.state.db_pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute("""
                 INSERT INTO image_queue (image_id, s3_url, status, timestamp, location)
-                VALUES (%s, %s, 'pending', %s, %s)
-            """, (image_id, save_path, timestamp, location))
+                VALUES ($1, $2, 'pending', $3, $4)
+            """, image_id, save_path, timestamp_dt, location)
 
-            cursor.execute("""
+            await conn.execute("""
                 INSERT INTO image_metadata (image_id, description, vector)
-                VALUES (%s, %s, %s)
-            """, (image_id, '{}', json.dumps(zero_vector)))
-
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+                VALUES ($1, $2, $3)
+            """, image_id, '{}', json.dumps(zero_vector))
 
     return {"message": "File uploaded and queued successfully", "filename": filename}
 
@@ -96,8 +101,7 @@ async def upload_photo(
 async def get_image_metadata(
     image_id: str,
     include_description: bool = Query(True, description="Include description in the response"),
-    include_vector: bool = Query(False, description="Include vector in the response"),
-    db: psycopg2.extensions.connection = Depends(get_db)
+    include_vector: bool = Query(False, description="Include vector in the response")
 ):
     select_parts = []
     if include_description:
@@ -108,25 +112,21 @@ async def get_image_metadata(
     if not select_parts:
         raise HTTPException(status_code=400, detail="At least one of description or vector must be requested")
     
-    query = f"SELECT {', '.join(select_parts)} FROM image_metadata WHERE image_id = %s"
+    query = f"SELECT {', '.join(select_parts)} FROM image_metadata WHERE image_id = $1"
 
-    try:
-        with db.cursor() as cursor:
-            cursor.execute(query, (image_id,))
-            result = cursor.fetchone()
+    async with app.state.db_pool.acquire() as conn:
+        result = await conn.fetchrow(query, image_id)
 
-            if not result:
-                raise HTTPException(status_code=404, detail="Image metadata not found")
+        if not result:
+            raise HTTPException(status_code=404, detail="Image metadata not found")
 
-            response = ImageMetadata()
-            if include_description and 'description' in result:
-                response.description = result['description']
-            if include_vector and 'vector' in result:
-                response.vector = json.loads(result['vector'])
+        response = ImageMetadata()
+        if include_description and 'description' in result:
+            response.description = result['description']
+        if include_vector and 'vector' in result:
+            response.vector = json.loads(result['vector'])
 
-            return response
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        return response
 
 @lru_cache(maxsize=1000)
 def encode_image(image_path):
@@ -138,7 +138,7 @@ def get_recent_photos(count):
     photos.sort(key=lambda x: os.path.getmtime(os.path.join(PHOTOS_DIR, x)), reverse=True)
     return photos[:count]
 
-def gpt4_visual_test(image_paths, question):
+async def gpt4_visual_test(image_paths, question):
     try:
         images = [
             {
@@ -156,7 +156,7 @@ def gpt4_visual_test(image_paths, question):
         }
 
         payload = {
-            "model": "gpt-4o",
+            "model": "gpt-4o-mini",
             "messages": [
                 {
                     "role": "user",
@@ -173,12 +173,14 @@ def gpt4_visual_test(image_paths, question):
             "stream": True
         }
 
-        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload, stream=True)
-        response.raise_for_status()
-
-        return StreamingResponse(response.iter_content(chunk_size=1024), media_type="text/event-stream")
+        async with aiohttp.ClientSession() as session:
+            async with session.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload) as response:
+                response.raise_for_status()
+                async for line in response.content:
+                    if line:
+                        yield line
     except Exception as e:
-        return StreamingResponse(iter([f"An error occurred: {e}"]), media_type="text/event-stream")
+        yield f"An error occurred: {str(e)}".encode()
 
 @app.get("/api/ping")
 async def ping_pong():
@@ -189,13 +191,14 @@ async def ask_gpt4_visual(request: QuestionRequest):
     try:
         recent_photos = get_recent_photos(request.count)
         image_paths = [os.path.join(PHOTOS_DIR, photo) for photo in recent_photos]
-        return gpt4_visual_test(image_paths, request.question)
+        return StreamingResponse(gpt4_visual_test(image_paths, request.question), media_type="text/event-stream")
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-def describe_image(image_path, prompt):
+async def describe_image(image_path, prompt):
     try:
-        encoded_image = encode_image(image_path)
+        with open(image_path, "rb") as image_file:
+            encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
         
         headers = {
             "Content-Type": "application/json",
@@ -203,7 +206,7 @@ def describe_image(image_path, prompt):
         }
 
         payload = {
-            "model": "gpt-4o",
+            "model": "gpt-4o-mini",
             "messages": [
                 {
                     "role": "user",
@@ -224,13 +227,14 @@ def describe_image(image_path, prompt):
             "max_tokens": 1200
         }
 
-        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
-        response.raise_for_status()
-
-        data = response.json()
-        return data['choices'][0]['message']['content']
+        async with aiohttp.ClientSession() as session:
+            async with session.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload) as response:
+                response.raise_for_status()
+                data = await response.json()
+                return data['choices'][0]['message']['content']
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred: {e}")
+        print(f"Error in describe_image: {e}")
+        return str(e)
 
 @app.post("/api/describe")
 async def describe_image_endpoint(request: DescribeImageRequest):
@@ -248,88 +252,87 @@ async def describe_image_endpoint(request: DescribeImageRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-def vectorize_text(text):
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {API_KEY}"
-    }
-
-    payload = {
-        "model": "text-embedding-3-small",
-        "input": text
-    }
-
-    response = requests.post("https://api.openai.com/v1/embeddings", headers=headers, json=payload)
-    response.raise_for_status()
-    return response.json()["data"][0]["embedding"]
-
-def handle_notification(notification):
-    conn = get_db_connection()
+async def vectorize_text(text):
     try:
-        payload = json.loads(notification.payload)
-        image_id = payload.get('image_id')
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {API_KEY}"
+        }
 
-        with conn.cursor() as cursor:
-            cursor.execute("SELECT s3_url, timestamp, location FROM image_queue WHERE image_id = %s", (image_id,))
-            image_data = cursor.fetchone()
-            if not image_data:
-                return
+        payload = {
+            "model": "text-embedding-3-small",
+            "input": text
+        }
 
-            s3_url = image_data['s3_url']
-            timestamp = image_data['timestamp']
-            location = image_data['location']
+        async with aiohttp.ClientSession() as session:
+            async with session.post("https://api.openai.com/v1/embeddings", headers=headers, json=payload) as response:
+                response.raise_for_status()
+                data = await response.json()
+                return data["data"][0]["embedding"]
+    except Exception as e:
+        print(f"Error in vectorize_text: {e}")
+        return []
 
-            with open("image_to_text_prompt.txt", "r") as file:
-                prompt = file.read().strip()
 
-            description = describe_image(s3_url, prompt)
+async def handle_notification(conn, pid, channel, payload):
+    try:
+        payload_data = json.loads(payload)
+        image_id = payload_data.get('image_id')
 
-            description = description.replace('unique_image_id', s3_url)
-            description = description.replace('YYYY-MM-DDTHH:MM:SS', timestamp.strftime('%Y-%m-%dT%H:%M:%S'))
-            description = description.replace('home', location)
-            
-            vector = vectorize_text(description)
+        image_data = await conn.fetchrow(
+            "SELECT s3_url, timestamp, location FROM image_queue WHERE image_id = $1",
+            image_id
+        )
+        if not image_data:
+            return
 
-            cursor.execute("""
+        s3_url = image_data['s3_url']
+        timestamp = image_data['timestamp']
+        location = image_data['location']
+
+        with open("image_to_text_prompt.txt", "r") as file:
+            prompt = file.read().strip()
+
+        description = await describe_image(s3_url, prompt)
+
+        # Ensure the timestamp is in UTC (it should already be, but let's be sure)
+        timestamp = timestamp.replace(tzinfo=timezone.utc)
+        
+        # Format the timestamp in ISO format with 'Z' indicating UTC
+        formatted_timestamp = timestamp.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+        
+        print(f"Formatted timestamp: {formatted_timestamp}")
+
+        description = description.replace('unique_image_id', s3_url)
+        description = description.replace('YYYY-MM-DDTHH:MM:SS', formatted_timestamp)
+        description = description.replace('home', location)
+        
+        vector = await vectorize_text(description)
+
+        async with conn.transaction():
+            await conn.execute("""
                 UPDATE image_metadata
-                SET description = %s, vector = %s
-                WHERE image_id = %s
-            """, (description, json.dumps(vector), image_id))
+                SET description = $1, vector = $2
+                WHERE image_id = $3
+            """, description, json.dumps(vector), image_id)
 
-            cursor.execute("""
+            await conn.execute("""
                 UPDATE image_queue
                 SET status = 'completed'
-                WHERE image_id = %s
-            """, (image_id,))
-
-            conn.commit()
+                WHERE image_id = $1
+            """, image_id)
     except Exception as e:
         print(f"Error handling notification: {e}")
-        conn.rollback()
-    finally:
-        conn.close()
 
 @app.on_event("startup")
 async def startup():
-    def listen_to_notifications():
-        print("Listening for notifications on channel 'image_queue_insert'...")
-        conn = get_db_connection()
-        conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
-        try:
-            with conn.cursor() as cursor:
-                cursor.execute("LISTEN image_queue_insert;")
-                while True:
-                    conn.poll()
-                    while conn.notifies:
-                        notify = conn.notifies.pop(0)
-                        handle_notification(notify)
-        finally:
-            conn.close()
+    async def listen_to_notifications():
+        conn = await asyncpg.connect(DATABASE_URL)
+        await conn.add_listener('image_queue_insert', handle_notification)
+        while True:
+            await asyncio.sleep(3600)  # Keep the connection alive
 
-    import threading
-    listener_thread = threading.Thread(target=listen_to_notifications)
-    listener_thread.daemon = True
-    listener_thread.start()
+    asyncio.create_task(listen_to_notifications())
 
 if __name__ == "__main__":
     import uvicorn

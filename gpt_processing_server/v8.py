@@ -53,7 +53,6 @@ class QuestionRequest(BaseModel):
 class DescribeImageRequest(BaseModel):
     filename: str
 
-
 @app.post("/api/upload", response_model=UploadResponse)
 async def upload_photo(
     file: UploadFile = File(...),
@@ -83,12 +82,15 @@ async def upload_photo(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid timestamp format. Expected ISO format.")
 
+    # Use the current time for both timestamp and created_at
+    current_time = datetime.now(timezone.utc)
+    
     async with app.state.db_pool.acquire() as conn:
         async with conn.transaction():
             await conn.execute("""
-                INSERT INTO image_queue (image_id, s3_url, status, timestamp, location)
-                VALUES ($1, $2, 'pending', $3, $4)
-            """, image_id, save_path, timestamp_dt, location)
+                INSERT INTO image_queue (image_id, s3_url, status, timestamp, location, created_at)
+                VALUES ($1, $2, 'pending', $3, $4, $3)
+            """, image_id, save_path, current_time, location)
 
             await conn.execute("""
                 INSERT INTO image_metadata (image_id, description, vector)
@@ -273,7 +275,6 @@ async def vectorize_text(text):
         print(f"Error in vectorize_text: {e}")
         return []
 
-
 async def handle_notification(conn, pid, channel, payload):
     try:
         payload_data = json.loads(payload)
@@ -295,16 +296,11 @@ async def handle_notification(conn, pid, channel, payload):
 
         description = await describe_image(s3_url, prompt)
 
-        # Ensure the timestamp is in UTC (it should already be, but let's be sure)
-        timestamp = timestamp.replace(tzinfo=timezone.utc)
-        
-        # Format the timestamp in ISO format with 'Z' indicating UTC
-        formatted_timestamp = timestamp.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
-        
-        print(f"Formatted timestamp: {formatted_timestamp}")
+        # Use the current time for updating
+        current_time = datetime.now(timezone.utc)
 
         description = description.replace('unique_image_id', s3_url)
-        description = description.replace('YYYY-MM-DDTHH:MM:SS', formatted_timestamp)
+        description = description.replace('YYYY-MM-DDTHH:MM:SS', current_time.isoformat())
         description = description.replace('home', location)
         
         vector = await vectorize_text(description)
@@ -318,9 +314,9 @@ async def handle_notification(conn, pid, channel, payload):
 
             await conn.execute("""
                 UPDATE image_queue
-                SET status = 'completed'
+                SET status = 'completed', updated_at = $2
                 WHERE image_id = $1
-            """, image_id)
+            """, image_id, current_time)
     except Exception as e:
         print(f"Error handling notification: {e}")
 

@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 
 import aiohttp
 import asyncpg
+import logging
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Query, Depends
 from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
@@ -23,6 +24,9 @@ if not API_KEY:
 DATABASE_URL = os.getenv('DATABASE_URL', 'dbname=pgdatabase user=pguser password=pgpassword host=localhost')
 PHOTOS_API_URL = "http://localhost:5001/api/photos"
 PHOTOS_DIR = 'photos'
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = FastAPI()
 
@@ -291,29 +295,24 @@ async def handle_notification(conn, pid, channel, payload):
         timestamp = image_data['timestamp']
         location = image_data['location']
 
-        # 确保时间戳是 UTC 时间
+        # Ensure the timestamp is UTC
         if timestamp.tzinfo is None:
             timestamp = timestamp.replace(tzinfo=timezone.utc)
         else:
             timestamp = timestamp.astimezone(timezone.utc)
         
-        # 格式化时间戳为 ISO 8601 格式
+        # Format timestamp to ISO 8601 format
         formatted_timestamp = timestamp.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
-
-        print(f"s3_url: {s3_url} Formatted timestamp: {formatted_timestamp}")
 
         with open("image_to_text_prompt.txt", "r") as file:
             prompt = file.read().strip()
 
-        # 替换提示中的占位符
         prompt = prompt.replace('unique_image_id', s3_url)
         prompt = prompt.replace('YYYY-MM-DDTHH:MM:SS', formatted_timestamp)
         prompt = prompt.replace('location', location)
 
-        # 使用更新后的提示获取图像描述
         description = await describe_image(s3_url, prompt)
 
-        # 生成向量表示
         vector = await vectorize_text(description)
 
         async with conn.transaction():
@@ -328,8 +327,10 @@ async def handle_notification(conn, pid, channel, payload):
                 SET status = 'completed'
                 WHERE image_id = $1
             """, image_id)
+            
+        logging.info(f"Image processed successfully for image_id: {image_id}, s3_url: {s3_url}")
     except Exception as e:
-        print(f"Error handling notification: {e}")
+        logging.error(f"Error handling notification for image_id: {image_id}: {str(e)}")
 
 @app.on_event("startup")
 async def startup():

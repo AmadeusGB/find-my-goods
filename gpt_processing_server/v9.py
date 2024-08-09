@@ -139,11 +139,6 @@ def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
 
-def get_recent_photos(count):
-    photos = [f for f in os.listdir(PHOTOS_DIR) if os.path.isfile(os.path.join(PHOTOS_DIR, f))]
-    photos.sort(key=lambda x: os.path.getmtime(os.path.join(PHOTOS_DIR, x)), reverse=True)
-    return photos[:count]
-
 async def gpt4_visual_test(image_paths, question):
     try:
         images = [
@@ -192,15 +187,44 @@ async def gpt4_visual_test(image_paths, question):
 async def ping_pong():
     return JSONResponse(content={"message": "pong"})
 
+async def get_relevant_photos(question: str, count: int, db_pool):
+    # Step 1: Vectorize the question
+    question_vector = await vectorize_text(question)
+    
+    if not question_vector:
+        raise HTTPException(status_code=500, detail="Failed to vectorize the question")
+    
+    # Step 2: Perform vector similarity search in the database
+    async with db_pool.acquire() as conn:
+        similar_images = await conn.fetch("""
+            SELECT image_id, vector <-> $1 AS distance
+            FROM image_metadata
+            ORDER BY distance
+            LIMIT $2
+        """, json.dumps(question_vector), count)
+        
+        if not similar_images:
+            return []
+        
+        # Step 3: Get corresponding s3_urls from image_queue
+        image_ids = [img['image_id'] for img in similar_images]
+        s3_urls = await conn.fetch("""
+            SELECT s3_url
+            FROM image_queue
+            WHERE image_id = ANY($1::uuid[])
+        """, image_ids)
+        
+        # Step 4: Return the list of s3_urls
+        return [url['s3_url'] for url in s3_urls]
+    
 @app.post("/api/ask")
-async def ask_gpt4_visual(request: QuestionRequest):
+async def ask_gpt4_visual_search(request: QuestionRequest):
     try:
-        recent_photos = get_recent_photos(request.count)
-        image_paths = [os.path.join(PHOTOS_DIR, photo) for photo in recent_photos]
-        return StreamingResponse(gpt4_visual_test(image_paths, request.question), media_type="text/event-stream")
+        relevant_photos = await get_relevant_photos(request.question, request.count, app.state.db_pool)
+        return StreamingResponse(gpt4_visual_test(relevant_photos, request.question), media_type="text/event-stream")
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-
+    
 async def describe_image(image_path, prompt):
     try:
         with open(image_path, "rb") as image_file:

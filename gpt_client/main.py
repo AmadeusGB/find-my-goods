@@ -2,11 +2,10 @@ import requests
 import re
 import codecs
 import logging
+import argparse
 from requests.exceptions import RequestException
 
 API_URL = "http://127.0.0.1:8000/api/ask"
-QUESTION = "描述一下图片中的内容?"
-COUNT = 5
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -44,12 +43,12 @@ def parse_openai_stream(raw_response):
             if text != '\0':
                 print(text, end='', flush=True)
 
-def main():
+def main(question, count):
     payload = {
-        "question": QUESTION,
-        "count": COUNT
+        "question": question,
+        "count": count
     }
-
+    
     try:
         response = requests.post(API_URL, json=payload, stream=True, timeout=30)
         response.raise_for_status()
@@ -60,8 +59,14 @@ def main():
         logging.error(f"Unexpected error: {str(e)}")
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Send a question to the API and parse the response.")
+    parser.add_argument("question", type=str, help="The question to send to the API")
+    parser.add_argument("--count", type=int, default=5, help="The count parameter (default: 5)")
+    
+    args = parser.parse_args()
+    
     try:
-        main()
+        main(args.question, args.count)
     except KeyboardInterrupt:
         logging.info("Program interrupted by user")
     except Exception as e:

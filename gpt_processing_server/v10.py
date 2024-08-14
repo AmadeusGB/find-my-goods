@@ -12,8 +12,7 @@ import aiohttp
 import asyncpg
 import logging
 import torch
-import torchvision.transforms as transforms
-from torchvision.models import mobilenet_v3_large, MobileNet_V3_Large_Weights
+import clip
 from PIL import Image
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Query, Depends
 from fastapi.responses import StreamingResponse, JSONResponse
@@ -34,21 +33,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 app = FastAPI()
 
-# Load MobileNet V3 Large model
-model = mobilenet_v3_large(weights=MobileNet_V3_Large_Weights.DEFAULT)
-model.classifier = torch.nn.Sequential(
-    model.classifier[0],
-    torch.nn.Linear(1280, 1280)
-)
-model.eval()
-
-# Image preprocessing
-preprocess = transforms.Compose([
-    transforms.Resize(256),
-    transforms.CenterCrop(224),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-])
+# Load CLIP model
+device = "cuda" if torch.cuda.is_available() else "cpu"
+model, preprocess = clip.load("ViT-B/32", device=device)
 
 # Use asyncpg for asynchronous database operations
 async def get_db_pool():
@@ -93,7 +80,7 @@ async def upload_photo(
         buffer.write(content)
 
     image_id = str(uuid.uuid4())
-    zero_vector = [0.0] * 1280
+    zero_vector = [0.0] * 512  # CLIP uses 512-dimensional vectors
 
     # Convert timestamp string to UTC datetime object
     try:
@@ -259,60 +246,24 @@ async def describe_image(image_path, prompt):
         print(f"Error in describe_image: {e}")
         return str(e)
 
-@app.post("/api/describe")
-async def describe_image_endpoint(request: DescribeImageRequest):
-    try:
-        image_path = os.path.join(PHOTOS_DIR, request.filename)
-        if not os.path.exists(image_path):
-            raise HTTPException(status_code=404, detail="Image not found")
-
-        with open("image_to_text_prompt.txt", "r") as file:
-            prompt = file.read().strip()
-        
-        description = describe_image(image_path, prompt)
-        print(description)  # Print the description to the console
-        return {"description": description}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
 async def vectorize_text(text):
     try:
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {API_KEY}"
-        }
-
-        payload = {
-            "model": "text-embedding-3-small",
-            "input": text
-        }
-
-        async with aiohttp.ClientSession() as session:
-            async with session.post("https://api.openai.com/v1/embeddings", headers=headers, json=payload) as response:
-                response.raise_for_status()
-                data = await response.json()
-                vector_1536 = np.array(data["data"][0]["embedding"])
-            
-        vector_1280 = np.dot(vector_1536, np.random.randn(1536, 1280))
-        
-        vector_1280 = vector_1280 / np.linalg.norm(vector_1280)
-        
-        return vector_1280.tolist()
+        with torch.no_grad():
+            text_inputs = clip.tokenize([text]).to(device)
+            text_features = model.encode_text(text_inputs)
+            text_features /= text_features.norm(dim=-1, keepdim=True)
+            return text_features.cpu().numpy()[0].tolist()
     except Exception as e:
-        print(f"Error in vectorize_text: {e}")
+        logging.error(f"Error in vectorize_text: {e}")
         return []
 
 async def vectorize_image(image_path):
     try:
-        image = Image.open(image_path).convert('RGB')
-        input_tensor = preprocess(image).unsqueeze(0)
+        image = preprocess(Image.open(image_path)).unsqueeze(0).to(device)
         with torch.no_grad():
-            vector = model(input_tensor).squeeze().tolist()
-        
-        if len(vector) != 1280:
-            raise ValueError(f"Expected 1280 dimensions, got {len(vector)}")
-        
-        return vector
+            image_features = model.encode_image(image)
+            image_features /= image_features.norm(dim=-1, keepdim=True)
+            return image_features.cpu().numpy()[0].tolist()
     except Exception as e:
         logging.error(f"Error in vectorize_image: {e}")
         return []

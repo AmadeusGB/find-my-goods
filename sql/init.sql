@@ -11,7 +11,7 @@ CREATE TABLE image_data (
     status VARCHAR(20) NOT NULL DEFAULT 'pending',
     timestamp TIMESTAMPTZ NOT NULL,
     location TEXT NOT NULL,
-    vector vector(1280) NOT NULL, -- MobileNet V3 Large 输出 1280 维向量
+    vector vector(512) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id, timestamp)

@@ -131,7 +131,7 @@ def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
 
-async def gpt4_visual_test(image_paths, question):
+async def gpt4_visual_speak(image_paths, question):
     try:
         images = [
             {
@@ -149,7 +149,7 @@ async def gpt4_visual_test(image_paths, question):
         }
 
         payload = {
-            "model": "gpt-4o-mini",
+            "model": "gpt-4o",
             "messages": [
                 {
                     "role": "user",
@@ -195,6 +195,7 @@ async def get_relevant_photos(question: str, count: int, db_pool):
         """, json.dumps(question_vector), count)
         
         if not similar_images:
+            logging.info(f"no found!")
             return []
         
         return [{'image_id': img['image_id'], 's3_url': img['s3_url']} for img in similar_images]
@@ -212,7 +213,7 @@ async def ask_gpt4_visual_search(request: QuestionRequest):
         # Log the selected image paths
         logging.info(f"Selected images for question '{request.question}': {image_paths}")
         
-        return StreamingResponse(gpt4_visual_test(image_paths, request.question), media_type="text/event-stream")
+        return StreamingResponse(gpt4_visual_speak(image_paths, request.question), media_type="text/event-stream")
     except Exception as e:
         logging.error(f"Error in ask_gpt4_visual_search: {str(e)}", exc_info=True)
         raise HTTPException(status_code=400, detail=str(e))
@@ -228,7 +229,7 @@ async def describe_image(image_path, prompt):
         }
 
         payload = {
-            "model": "gpt-4o-mini",
+            "model": "gpt-4o",
             "messages": [
                 {
                     "role": "user",

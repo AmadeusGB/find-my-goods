@@ -3,6 +3,7 @@ import base64
 import json
 import uuid
 import asyncio
+import numpy as np
 from typing import List, Optional
 from functools import lru_cache
 from datetime import datetime, timezone
@@ -10,6 +11,10 @@ from datetime import datetime, timezone
 import aiohttp
 import asyncpg
 import logging
+import torch
+import torchvision.transforms as transforms
+from torchvision.models import mobilenet_v3_large, MobileNet_V3_Large_Weights
+from PIL import Image
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Query, Depends
 from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
@@ -22,13 +27,28 @@ if not API_KEY:
     raise ValueError("API key not found. Please set the OPENAI_API_KEY environment variable.")
 
 DATABASE_URL = os.getenv('DATABASE_URL', 'dbname=pgdatabase user=pguser password=pgpassword host=localhost')
-PHOTOS_API_URL = "http://localhost:5001/api/photos"
 PHOTOS_DIR = 'photos'
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = FastAPI()
+
+# Load MobileNet V3 Large model
+model = mobilenet_v3_large(weights=MobileNet_V3_Large_Weights.DEFAULT)
+model.classifier = torch.nn.Sequential(
+    model.classifier[0],
+    torch.nn.Linear(1280, 1280)
+)
+model.eval()
+
+# Image preprocessing
+preprocess = transforms.Compose([
+    transforms.Resize(256),
+    transforms.CenterCrop(224),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+])
 
 # Use asyncpg for asynchronous database operations
 async def get_db_pool():
@@ -46,14 +66,13 @@ class UploadResponse(BaseModel):
     message: str
     filename: str
 
-class ImageMetadata(BaseModel):
-    description: Optional[str] = None
+class ImageVector(BaseModel):
     vector: Optional[List[float]] = None
 
 class QuestionRequest(BaseModel):
     question: str
     count: int = 5
-
+    
 class DescribeImageRequest(BaseModel):
     filename: str
 
@@ -74,7 +93,7 @@ async def upload_photo(
         buffer.write(content)
 
     image_id = str(uuid.uuid4())
-    zero_vector = [0.0] * 1536
+    zero_vector = [0.0] * 1280
 
     # Convert timestamp string to UTC datetime object
     try:
@@ -90,49 +109,22 @@ async def upload_photo(
     current_time = datetime.now(timezone.utc)
     
     async with app.state.db_pool.acquire() as conn:
-        async with conn.transaction():
-            await conn.execute("""
-                INSERT INTO image_queue (image_id, s3_url, status, timestamp, location, created_at)
-                VALUES ($1, $2, 'pending', $3, $4, $3)
-            """, image_id, save_path, current_time, location)
-
-            await conn.execute("""
-                INSERT INTO image_metadata (image_id, description, vector)
-                VALUES ($1, $2, $3)
-            """, image_id, '{}', json.dumps(zero_vector))
+        await conn.execute("""
+            INSERT INTO image_data (image_id, s3_url, status, timestamp, location, vector, created_at)
+            VALUES ($1, $2, 'pending', $3, $4, $5, $3)
+        """, image_id, save_path, current_time, location, json.dumps(zero_vector))
 
     return {"message": "File uploaded and queued successfully", "filename": filename}
 
-@app.get("/api/image_metadata/{image_id}", response_model=ImageMetadata)
-async def get_image_metadata(
-    image_id: str,
-    include_description: bool = Query(True, description="Include description in the response"),
-    include_vector: bool = Query(False, description="Include vector in the response")
-):
-    select_parts = []
-    if include_description:
-        select_parts.append("description")
-    if include_vector:
-        select_parts.append("vector")
-    
-    if not select_parts:
-        raise HTTPException(status_code=400, detail="At least one of description or vector must be requested")
-    
-    query = f"SELECT {', '.join(select_parts)} FROM image_metadata WHERE image_id = $1"
-
+@app.get("/api/image_vector/{image_id}", response_model=ImageVector)
+async def get_image_vector(image_id: str):
     async with app.state.db_pool.acquire() as conn:
-        result = await conn.fetchrow(query, image_id)
+        result = await conn.fetchrow("SELECT vector FROM image_data WHERE image_id = $1", image_id)
 
         if not result:
-            raise HTTPException(status_code=404, detail="Image metadata not found")
+            raise HTTPException(status_code=404, detail="Image vector not found")
 
-        response = ImageMetadata()
-        if include_description and 'description' in result:
-            response.description = result['description']
-        if include_vector and 'vector' in result:
-            response.vector = json.loads(result['vector'])
-
-        return response
+        return ImageVector(vector=json.loads(result['vector']))
 
 @lru_cache(maxsize=1000)
 def encode_image(image_path):
@@ -188,17 +180,16 @@ async def ping_pong():
     return JSONResponse(content={"message": "pong"})
 
 async def get_relevant_photos(question: str, count: int, db_pool):
-    # Step 1: Vectorize the question
     question_vector = await vectorize_text(question)
     
     if not question_vector:
         raise HTTPException(status_code=500, detail="Failed to vectorize the question")
     
-    # Step 2: Perform vector similarity search in the database
     async with db_pool.acquire() as conn:
         similar_images = await conn.fetch("""
-            SELECT image_id, vector <-> $1 AS distance
-            FROM image_metadata
+            SELECT image_id, s3_url, vector <-> $1 AS distance
+            FROM image_data
+            WHERE status = 'completed'
             ORDER BY distance
             LIMIT $2
         """, json.dumps(question_vector), count)
@@ -206,23 +197,24 @@ async def get_relevant_photos(question: str, count: int, db_pool):
         if not similar_images:
             return []
         
-        # Step 3: Get corresponding s3_urls from image_queue
-        image_ids = [img['image_id'] for img in similar_images]
-        s3_urls = await conn.fetch("""
-            SELECT s3_url
-            FROM image_queue
-            WHERE image_id = ANY($1::uuid[])
-        """, image_ids)
-        
-        # Step 4: Return the list of s3_urls
-        return [url['s3_url'] for url in s3_urls]
+        return [{'image_id': img['image_id'], 's3_url': img['s3_url']} for img in similar_images]
     
 @app.post("/api/ask")
 async def ask_gpt4_visual_search(request: QuestionRequest):
     try:
         relevant_photos = await get_relevant_photos(request.question, request.count, app.state.db_pool)
-        return StreamingResponse(gpt4_visual_test(relevant_photos, request.question), media_type="text/event-stream")
+        if not relevant_photos:
+            return JSONResponse(content={"message": "No relevant photos found"})
+        
+        # Extract s3_urls from relevant_photos
+        image_paths = [photo['s3_url'] for photo in relevant_photos]
+        
+        # Log the selected image paths
+        logging.info(f"Selected images for question '{request.question}': {image_paths}")
+        
+        return StreamingResponse(gpt4_visual_test(image_paths, request.question), media_type="text/event-stream")
     except Exception as e:
+        logging.error(f"Error in ask_gpt4_visual_search: {str(e)}", exc_info=True)
         raise HTTPException(status_code=400, detail=str(e))
     
 async def describe_image(image_path, prompt):
@@ -298,59 +290,64 @@ async def vectorize_text(text):
             async with session.post("https://api.openai.com/v1/embeddings", headers=headers, json=payload) as response:
                 response.raise_for_status()
                 data = await response.json()
-                return data["data"][0]["embedding"]
+                vector_1536 = np.array(data["data"][0]["embedding"])
+            
+        vector_1280 = np.dot(vector_1536, np.random.randn(1536, 1280))
+        
+        vector_1280 = vector_1280 / np.linalg.norm(vector_1280)
+        
+        return vector_1280.tolist()
     except Exception as e:
         print(f"Error in vectorize_text: {e}")
         return []
 
+async def vectorize_image(image_path):
+    try:
+        image = Image.open(image_path).convert('RGB')
+        input_tensor = preprocess(image).unsqueeze(0)
+        with torch.no_grad():
+            vector = model(input_tensor).squeeze().tolist()
+        
+        if len(vector) != 1280:
+            raise ValueError(f"Expected 1280 dimensions, got {len(vector)}")
+        
+        return vector
+    except Exception as e:
+        logging.error(f"Error in vectorize_image: {e}")
+        return []
+    
 async def handle_notification(conn, pid, channel, payload):
     try:
+        logging.info(f"Received notification: {payload}")
         payload_data = json.loads(payload)
         image_id = payload_data.get('image_id')
 
+        logging.info(f"Processing image_id: {image_id}")
+
         image_data = await conn.fetchrow(
-            "SELECT s3_url, timestamp, location FROM image_queue WHERE image_id = $1",
+            "SELECT s3_url FROM image_data WHERE image_id = $1",
             image_id
         )
         if not image_data:
+            logging.warning(f"No image data found for image_id: {image_id}")
             return
 
         s3_url = image_data['s3_url']
-        timestamp = image_data['timestamp']
-        location = image_data['location']
+        logging.info(f"Vectorizing image: {s3_url}")
 
-        # Ensure the timestamp is UTC
-        if timestamp.tzinfo is None:
-            timestamp = timestamp.replace(tzinfo=timezone.utc)
-        else:
-            timestamp = timestamp.astimezone(timezone.utc)
-        
-        # Format timestamp to ISO 8601 format
-        formatted_timestamp = timestamp.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+        vector = await vectorize_image(s3_url)
 
-        with open("image_to_text_prompt.txt", "r") as file:
-            prompt = file.read().strip()
+        if not vector:
+            logging.error(f"Failed to vectorize image: {s3_url}")
+            return
 
-        prompt = prompt.replace('unique_image_id', s3_url)
-        prompt = prompt.replace('YYYY-MM-DDTHH:MM:SS', formatted_timestamp)
-        prompt = prompt.replace('location', location)
-
-        description = await describe_image(s3_url, prompt)
-
-        vector = await vectorize_text(description)
-
+        logging.info(f"Updating database with vector for image_id: {image_id}")
         async with conn.transaction():
             await conn.execute("""
-                UPDATE image_metadata
-                SET description = $1, vector = $2
-                WHERE image_id = $3
-            """, description, json.dumps(vector), image_id)
-
-            await conn.execute("""
-                UPDATE image_queue
-                SET status = 'completed'
-                WHERE image_id = $1
-            """, image_id)
+                UPDATE image_data
+                SET vector = $1, status = 'completed'
+                WHERE image_id = $2
+            """, json.dumps(vector), image_id)
             
         logging.info(f"Image processed successfully for image_id: {image_id}, s3_url: {s3_url}")
     except Exception as e:
@@ -360,9 +357,10 @@ async def handle_notification(conn, pid, channel, payload):
 async def startup():
     async def listen_to_notifications():
         conn = await asyncpg.connect(DATABASE_URL)
-        await conn.add_listener('image_queue_insert', handle_notification)
+        await conn.add_listener('image_data_insert', handle_notification)
+        logging.info("Started listening for image_data_insert notifications")
         while True:
-            await asyncio.sleep(3600)  # Keep the connection alive
+            await asyncio.sleep(3600)   # Keep the connection alive
 
     asyncio.create_task(listen_to_notifications())
 

@@ -5,21 +5,22 @@
 ## Table of Contents
 1. [Project Overview](#project-overview)
 2. [Features](#features)
-3. [System Architecture](#system-architecture)
-4. [Installation](#installation)
-5. [Usage](#usage)
+3. [Use Cases](#use-cases)
+4. [System Architecture](#system-architecture)
+5. [Installation](#installation)
+6. [Usage](#usage)
    - [Camera Client](#camera-client)
    - [GPT Client](#gpt-client)
    - [GPT Processing Server](#gpt-processing-server)
-6. [Configuration](#configuration)
-7. [Database Schema](#database-schema)
-8. [API Endpoints](#api-endpoints)
-9. [Image Processing](#image-processing)
-10. [Performance Considerations](#performance-considerations)
-11. [Security and Privacy](#security-and-privacy)
-12. [Troubleshooting](#troubleshooting)
-13. [Contributing](#contributing)
-14. [License](#license)
+7. [Configuration](#configuration)
+8. [Database Schema](#database-schema)
+9. [API Endpoints](#api-endpoints)
+10. [Image Processing](#image-processing)
+11. [Performance Considerations](#performance-considerations)
+12. [Security and Privacy](#security-and-privacy)
+13. [Troubleshooting](#troubleshooting)
+14. [Contributing](#contributing)
+15. [License](#license)
 
 ## Project Overview
 
@@ -60,6 +61,39 @@ The system is designed to capture images or videos from multiple camera sources,
 8. **Scalable Architecture**:
    - Designed to handle multiple cameras and high volumes of data.
    - Separation of concerns between client, processing server, and database for improved scalability.
+
+## Use Cases
+
+1. **Real-Time Monitoring and Recording**:
+   - Continuously monitor and record different rooms in the house using multiple cameras.
+   - Capture and store high-definition images and videos for anytime access.
+   - Use cases: Home security monitoring, real-time care for the elderly and children.
+
+2. **Intelligent Query and Response**:
+   - Ask the system about the location of items or events in the home via voice or text.
+   - The system analyzes historical videos and key images to provide accurate answers.
+   - Example questions: "Where is my water bottle?", "Who moved my pizza yesterday?"
+   - Use cases: Item tracking, event review.
+
+3. **Event Push and Reporting**:
+   - Identify and report various events happening in the home, such as item movements, stranger intrusions, or animal disturbances.
+   - Example scenarios: "Your shoes were taken to the bathroom for washing yesterday" or "A wild cat entered the house and took the pizza".
+   - Use cases: Home security, pet monitoring.
+
+4. **Fridge Inventory Management**:
+   - Install a camera inside the fridge to periodically report on food item usage and remind users to replenish necessary items.
+   - Example functionality: "The milk in the fridge is running low, consider buying new milk".
+   - Use cases: Smart home management, food inventory management.
+
+5. **Baby Behavior Monitoring**:
+   - Install a camera in the baby's room to analyze and push alerts for dangerous behavior in real-time.
+   - Example functionality: Immediately send an alert to parents' phones if the baby falls from the bed.
+   - Use cases: Baby safety monitoring, child care.
+
+6. **Yard Monitoring**:
+   - Install cameras around the yard to summarize and report events happening around the yard during the week.
+   - Example functionality: "Several kittens played in your backyard this week" or "A bear turned over the trash bin".
+   - Use cases: Home perimeter security monitoring, animal activity monitoring.
 
 ## System Architecture
 

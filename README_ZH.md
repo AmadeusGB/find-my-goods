@@ -111,12 +111,32 @@ find-my-goods 是一个先进的、分布式的摄像头监控和分析系统，
      ```
 
 5. 设置环境变量：
-   - 在项目根目录创建一个 `.env` 文件。
-   - 添加以下变量：
+   - 在项目根目录创建一个 `.env` 文件：
      ```
-     OPENAI_API_KEY=your_openai_api_key
-     DATABASE_URL=postgresql://username:password@localhost/your_database_name
+     touch .env
      ```
+   - 使用文本编辑器打开 `.env` 文件，并添加以下变量：
+     ```
+     OPENAI_API_KEY=your_openai_api_key_here
+     DATABASE_URL=postgres://username:password@localhost:5432/database_name
+     PGUSER=your_postgres_username
+     PGPASSWORD=your_postgres_password
+     PGDATABASE=your_postgres_database_name
+     PGSSLMODE=disable
+     PHOTOS_API_URL=http://localhost:5001/api/photos
+     PHOTOS_DIR=photos
+     LOG_LEVEL=INFO
+     DB_POOL_MIN_SIZE=1
+     DB_POOL_MAX_SIZE=10
+     ```
+   - 将占位符值替换为您的实际配置详情：
+     - `your_openai_api_key_here`：您用于访问GPT-4的OpenAI API密钥
+     - `username`：您的PostgreSQL用户名
+     - `password`：您的PostgreSQL密码
+     - `database_name`：您的PostgreSQL数据库名称
+     - 根据您的设置需要调整其他值
+
+   注意：请保持您的 `.env` 文件安全，切勿将其提交到版本控制系统中。
 
 ## 使用方法
 

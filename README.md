@@ -111,12 +111,32 @@ The system consists of four main components:
      ```
 
 5. Set up environment variables:
-   - Create a `.env` file in the project root directory.
-   - Add the following variables:
+   - Create a `.env` file in the project root directory:
      ```
-     OPENAI_API_KEY=your_openai_api_key
-     DATABASE_URL=postgresql://username:password@localhost/your_database_name
+     touch .env
      ```
+   - Open the `.env` file in a text editor and add the following variables:
+     ```
+     OPENAI_API_KEY=your_openai_api_key_here
+     DATABASE_URL=postgres://username:password@localhost:5432/database_name
+     PGUSER=your_postgres_username
+     PGPASSWORD=your_postgres_password
+     PGDATABASE=your_postgres_database_name
+     PGSSLMODE=disable
+     PHOTOS_API_URL=http://localhost:5001/api/photos
+     PHOTOS_DIR=photos
+     LOG_LEVEL=INFO
+     DB_POOL_MIN_SIZE=1
+     DB_POOL_MAX_SIZE=10
+     ```
+   - Replace the placeholder values with your actual configuration details:
+     - `your_openai_api_key_here`: Your OpenAI API key for GPT-4 access
+     - `username`: Your PostgreSQL username
+     - `password`: Your PostgreSQL password
+     - `database_name`: Your PostgreSQL database name
+     - Adjust other values as needed for your setup
+
+   Note: Keep your `.env` file secure and never commit it to version control.
 
 ## Usage
 

@@ -58,7 +58,7 @@ class ImageVector(BaseModel):
 
 class QuestionRequest(BaseModel):
     question: str
-    count: int = 5
+    max_images: int = 10
     
 class DescribeImageRequest(BaseModel):
     filename: str
@@ -166,7 +166,7 @@ async def gpt4_visual_speak(image_paths, question):
 async def ping_pong():
     return JSONResponse(content={"message": "pong"})
 
-async def get_relevant_photos(question: str, count: int, db_pool):
+async def get_relevant_photos(question: str, max_images: int, db_pool):
     question_vector = await vectorize_text(question)
     
     if not question_vector:
@@ -179,7 +179,7 @@ async def get_relevant_photos(question: str, count: int, db_pool):
             WHERE status = 'completed'
             ORDER BY distance
             LIMIT $2
-        """, json.dumps(question_vector), count)
+        """, json.dumps(question_vector), max_images)
         
         if not similar_images:
             logging.info(f"no found!")
@@ -190,7 +190,9 @@ async def get_relevant_photos(question: str, count: int, db_pool):
 @app.post("/api/ask")
 async def ask_gpt4_visual_search(request: QuestionRequest):
     try:
-        relevant_photos = await get_relevant_photos(request.question, request.count, app.state.db_pool)
+        max_images = max(1, min(request.max_images, 10))
+        relevant_photos = await get_relevant_photos(request.question, max_images, app.state.db_pool)
+        
         if not relevant_photos:
             return JSONResponse(content={"message": "No relevant photos found"})
         

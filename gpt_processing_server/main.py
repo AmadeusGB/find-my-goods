@@ -3,7 +3,6 @@ import base64
 import json
 import uuid
 import asyncio
-import numpy as np
 from typing import List, Optional
 from functools import lru_cache
 from datetime import datetime, timezone
@@ -18,6 +17,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Query, Depen
 from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from langdetect import detect, LangDetectException, DetectorFactory
 
 load_dotenv()
 
@@ -63,6 +63,26 @@ class QuestionRequest(BaseModel):
 class DescribeImageRequest(BaseModel):
     filename: str
 
+# Language detection setup
+DetectorFactory.seed = 0
+
+@lru_cache(maxsize=1000)
+def _detect_language_sync(text: str) -> str:
+    try:
+        return detect(text)
+    except LangDetectException:
+        return "en"  # Default to English if detection fails
+
+async def detect_language(text: str) -> str:
+    sample = text[:100]
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _detect_language_sync, sample)
+
+@lru_cache(maxsize=1000)
+def encode_image(image_path):
+    with open(image_path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode('utf-8')
+    
 @app.post("/api/upload", response_model=UploadResponse)
 async def upload_photo(
     file: UploadFile = File(...),
@@ -118,17 +138,55 @@ def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
 
-async def gpt4_visual_speak(image_paths, question):
+async def gpt4_visual_speak(image_metadata, question, language):
     try:
-        images = [
-            {
+        sorted_metadata = sorted(image_metadata, key=lambda x: x['timestamp'])
+        
+        messages = []
+        for data in sorted_metadata:
+            encoded_image = await asyncio.to_thread(encode_image, data['s3_url'])
+            messages.append({
                 "type": "image_url",
                 "image_url": {
-                    "url": f"data:image/jpeg;base64,{encode_image(image_path)}"
+                    "url": f"data:image/jpeg;base64,{encoded_image}"
                 }
-            }
-            for image_path in image_paths
-        ]
+            })
+
+        detailed_prompt = f"""
+        Analyze the following {len(sorted_metadata)} images of kitchen scenes and describe the activities and changes occurring over time. Follow these enhanced guidelines:
+
+        1. Use time-based formatting to organize your response, e.g., "**8:00 AM - 8:30 AM:**". Estimate approximate time ranges based on the image timestamps.
+
+        2. Provide highly detailed descriptions using the 5W1H method (Who, When, What, Where, Why, How):
+           - Describe people's appearances, actions, and possible emotions.
+           - Note specific objects, their positions, and any changes.
+           - Speculate on the reasons behind activities and changes you observe.
+
+        3. Use a conversational and engaging tone, as if you're telling a story to a friend. Include:
+           - Vivid language and sensory details (e.g., "The aroma of freshly brewed coffee filled the air").
+           - Gentle humor or lighthearted observations where appropriate.
+           - Empathetic insights into the people's actions or situations.
+
+        4. Make educated guesses about activities between visible time periods to create a more cohesive narrative.
+
+        5. Focus on the most interesting aspects of kitchen life, including:
+           - Family dynamics and interactions.
+           - Cooking processes and meal preparations.
+           - Changes in the kitchen's state (e.g., from messy to clean or vice versa).
+
+        6. Relate your observations directly to the user's question: "{question}"
+
+        7. Start your description immediately without any introductory statements.
+
+        8. Provide your response in the {language} language, adapting your style to sound natural in that language.
+
+        Remember, the goal is to paint a vivid, engaging picture of daily life in this kitchen, making the scenes come alive for the reader.
+        """
+
+        messages.append({
+            "type": "text",
+            "text": detailed_prompt
+        })
 
         headers = {
             "Content-Type": "application/json",
@@ -140,28 +198,25 @@ async def gpt4_visual_speak(image_paths, question):
             "messages": [
                 {
                     "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": question
-                        },
-                        *images
-                    ]
+                    "content": messages
                 }
             ],
-            "max_tokens": 1200,
+            "max_tokens": 1800,
             "stream": True
         }
 
-        async with aiohttp.ClientSession() as session:
+        timeout = aiohttp.ClientTimeout(total=150)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload) as response:
                 response.raise_for_status()
                 async for line in response.content:
                     if line:
                         yield line
+    except asyncio.TimeoutError:
+        yield "Error: Request timed out".encode()
     except Exception as e:
         yield f"An error occurred: {str(e)}".encode()
-
+        
 @app.get("/api/ping")
 async def ping_pong():
     return JSONResponse(content={"message": "pong"})
@@ -174,7 +229,7 @@ async def get_relevant_photos(question: str, max_images: int, db_pool):
     
     async with db_pool.acquire() as conn:
         similar_images = await conn.fetch("""
-            SELECT image_id, s3_url, vector <-> $1 AS distance
+            SELECT image_id, s3_url, timestamp, location, vector <-> $1 AS distance
             FROM image_data
             WHERE status = 'completed'
             ORDER BY distance
@@ -182,10 +237,10 @@ async def get_relevant_photos(question: str, max_images: int, db_pool):
         """, json.dumps(question_vector), max_images)
         
         if not similar_images:
-            logging.info(f"no found!")
+            logging.info(f"No relevant images found!")
             return []
         
-        return [{'image_id': img['image_id'], 's3_url': img['s3_url']} for img in similar_images]
+        return [{'image_id': img['image_id'], 's3_url': img['s3_url'], 'timestamp': img['timestamp'], 'location': img['location']} for img in similar_images]
     
 @app.post("/api/ask")
 async def ask_gpt4_visual_search(request: QuestionRequest):
@@ -196,57 +251,14 @@ async def ask_gpt4_visual_search(request: QuestionRequest):
         if not relevant_photos:
             return JSONResponse(content={"message": "No relevant photos found"})
         
-        # Extract s3_urls from relevant_photos
-        image_paths = [photo['s3_url'] for photo in relevant_photos]
+        language = await detect_language(request.question)
         
-        # Log the selected image paths
-        logging.info(f"Selected images for question '{request.question}': {image_paths}")
+        logging.info(f"Selected images for question '{request.question}': {relevant_photos}")
         
-        return StreamingResponse(gpt4_visual_speak(image_paths, request.question), media_type="text/event-stream")
+        return StreamingResponse(gpt4_visual_speak(relevant_photos, request.question, language), media_type="text/event-stream")
     except Exception as e:
         logging.error(f"Error in ask_gpt4_visual_search: {str(e)}", exc_info=True)
         raise HTTPException(status_code=400, detail=str(e))
-    
-async def describe_image(image_path, prompt):
-    try:
-        with open(image_path, "rb") as image_file:
-            encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
-        
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {API_KEY}"
-        }
-
-        payload = {
-            "model": "gpt-4o",
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": prompt
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{encoded_image}"
-                            }
-                        }
-                    ]
-                }
-            ],
-            "max_tokens": 1200
-        }
-
-        async with aiohttp.ClientSession() as session:
-            async with session.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload) as response:
-                response.raise_for_status()
-                data = await response.json()
-                return data['choices'][0]['message']['content']
-    except Exception as e:
-        print(f"Error in describe_image: {e}")
-        return str(e)
 
 async def vectorize_text(text):
     try:

@@ -58,7 +58,7 @@ class ImageVector(BaseModel):
 
 class QuestionRequest(BaseModel):
     question: str
-    max_images: int = 10
+    max_images: int = 5
     
 class DescribeImageRequest(BaseModel):
     filename: str
@@ -245,7 +245,7 @@ async def get_relevant_photos(question: str, max_images: int, db_pool):
 @app.post("/api/ask")
 async def ask_gpt4_visual_search(request: QuestionRequest):
     try:
-        max_images = max(1, min(request.max_images, 10))
+        max_images = max(1, min(request.max_images, 5))
         relevant_photos = await get_relevant_photos(request.question, max_images, app.state.db_pool)
         
         if not relevant_photos:

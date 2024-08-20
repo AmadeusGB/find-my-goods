@@ -138,12 +138,23 @@ def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
 
+def format_timestamp(timestamp: datetime) -> str:
+    """
+    Format the timestamp to 'YYYY-MM-DD HH:MM:SS' in UTC.
+    
+    :param timestamp: datetime object
+    :return: formatted string
+    """
+    # Ensure the timestamp is in UTC
+    utc_timestamp = timestamp.astimezone(timezone.utc)
+    return utc_timestamp.strftime("%Y-%m-%d %H:%M:%S")
+
 async def gpt4_visual_speak(image_metadata, question, language):
     try:
         sorted_metadata = sorted(image_metadata, key=lambda x: x['timestamp'])
         
         messages = []
-        for data in sorted_metadata:
+        for index, data in enumerate(sorted_metadata):
             encoded_image = await asyncio.to_thread(encode_image, data['s3_url'])
             messages.append({
                 "type": "image_url",
@@ -151,11 +162,16 @@ async def gpt4_visual_speak(image_metadata, question, language):
                     "url": f"data:image/jpeg;base64,{encoded_image}"
                 }
             })
+            formatted_timestamp = format_timestamp(data['timestamp'])
+            messages.append({
+                "type": "text",
+                "text": f"Image {index + 1} details:\nTimestamp: {formatted_timestamp} UTC\nLocation: {data['location']}"
+            })
 
         detailed_prompt = f"""
-        Analyze the following {len(sorted_metadata)} images of kitchen scenes and describe the activities and changes occurring over time. Follow these enhanced guidelines:
+        Analyze the following {len(sorted_metadata)} images of kitchen scenes and describe the activities and changes occurring over time. Each image is accompanied by its timestamp (in UTC) and location. Follow these enhanced guidelines:
 
-        1. Use time-based formatting to organize your response, e.g., "**8:00 AM - 8:30 AM:**". Estimate approximate time ranges based on the image timestamps.
+        1. Use the provided timestamps to organize your response, e.g., "**[Timestamp UTC] - [Location]:**".
 
         2. Provide highly detailed descriptions using the 5W1H method (Who, When, What, Where, Why, How):
            - Describe people's appearances, actions, and possible emotions.
@@ -180,7 +196,7 @@ async def gpt4_visual_speak(image_metadata, question, language):
 
         8. Provide your response in the {language} language, adapting your style to sound natural in that language.
 
-        Remember, the goal is to paint a vivid, engaging picture of daily life in this kitchen, making the scenes come alive for the reader.
+        Remember, the goal is to paint a vivid, engaging picture of daily life in this kitchen, making the scenes come alive for the reader while accurately referencing the provided timestamps (in UTC) and locations.
         """
 
         messages.append({
@@ -229,7 +245,7 @@ async def get_relevant_photos(question: str, max_images: int, db_pool):
     
     async with db_pool.acquire() as conn:
         similar_images = await conn.fetch("""
-            SELECT image_id, s3_url, timestamp, location, vector <-> $1 AS distance
+            SELECT s3_url, timestamp, location, vector <-> $1 AS distance
             FROM image_data
             WHERE status = 'completed'
             ORDER BY distance
@@ -240,7 +256,7 @@ async def get_relevant_photos(question: str, max_images: int, db_pool):
             logging.info(f"No relevant images found!")
             return []
         
-        return [{'image_id': img['image_id'], 's3_url': img['s3_url'], 'timestamp': img['timestamp'], 'location': img['location']} for img in similar_images]
+        return [{'s3_url': img['s3_url'], 'timestamp': img['timestamp'], 'location': img['location']} for img in similar_images]
     
 @app.post("/api/ask")
 async def ask_gpt4_visual_search(request: QuestionRequest):

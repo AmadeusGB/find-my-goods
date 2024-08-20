@@ -169,34 +169,24 @@ async def gpt4_visual_speak(image_metadata, question, language):
             })
 
         detailed_prompt = f"""
-        Analyze the following {len(sorted_metadata)} images of kitchen scenes and describe the activities and changes occurring over time. Each image is accompanied by its timestamp (in UTC) and location. Follow these enhanced guidelines:
+        Analyze the following {len(sorted_metadata)} chronologically ordered images of kitchen scenes to answer the user's question: "{question}"
 
-        1. Use the provided timestamps to organize your response, e.g., "**[Timestamp UTC] - [Location]:**".
+        Key guidelines:
+        1. Focus exclusively on addressing the user's question.
+        2. Provide a concise, direct answer without unnecessary information.
+        3. For questions about activities or changes over time:
+        - Describe events in chronological order, using timestamps if relevant.
+        - Focus on changes and activities, not static elements.
+        - Avoid referencing specific image numbers.
+        4. For questions about locating objects:
+        - Describe the object's location in relation to other visible items.
+        - Mention any position changes over time only if relevant.
+        5. Use details from the images only if they directly contribute to answering the question.
+        6. Avoid introductory or concluding statements.
+        7. Adapt your language and level of detail to match the question's complexity.
+        8. Provide your response in {language}, ensuring it sounds natural and fluent.
 
-        2. Provide highly detailed descriptions using the 5W1H method (Who, When, What, Where, Why, How):
-           - Describe people's appearances, actions, and possible emotions.
-           - Note specific objects, their positions, and any changes.
-           - Speculate on the reasons behind activities and changes you observe.
-
-        3. Use a conversational and engaging tone, as if you're telling a story to a friend. Include:
-           - Vivid language and sensory details (e.g., "The aroma of freshly brewed coffee filled the air").
-           - Gentle humor or lighthearted observations where appropriate.
-           - Empathetic insights into the people's actions or situations.
-
-        4. Make educated guesses about activities between visible time periods to create a more cohesive narrative.
-
-        5. Focus on the most interesting aspects of kitchen life, including:
-           - Family dynamics and interactions.
-           - Cooking processes and meal preparations.
-           - Changes in the kitchen's state (e.g., from messy to clean or vice versa).
-
-        6. Relate your observations directly to the user's question: "{question}"
-
-        7. Start your description immediately without any introductory statements.
-
-        8. Provide your response in the {language} language, adapting your style to sound natural in that language.
-
-        Remember, the goal is to paint a vivid, engaging picture of daily life in this kitchen, making the scenes come alive for the reader while accurately referencing the provided timestamps (in UTC) and locations.
+        Your goal is to give a time-aware, focused answer that directly addresses the user's query.
         """
 
         messages.append({
